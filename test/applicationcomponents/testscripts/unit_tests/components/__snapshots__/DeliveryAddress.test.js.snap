@@ -1,0 +1,3 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`DeliveryAddress test Component - DeliveryAddress should match snapshot 1`] = `ShallowWrapper {}`;

@@ -1,0 +1,14 @@
+version: 0.2
+
+env:
+    secrets-manager:
+        backendIP: wrkshpSecrets:AppServer_PrivateIP
+
+phases:
+
+  pre_build:
+    commands:
+      - npm install
+  build:
+    commands:
+      - npm run scan
