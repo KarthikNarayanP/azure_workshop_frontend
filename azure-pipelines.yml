@@ -17,11 +17,11 @@ steps:
 
 - script: |
     echo "Environmental Value $(backendPublicIP)"
-    echo "Environmental Value $(backendIP)"
     npm install
   displayName: 'npm install'
 - script: |
-    backendIP=$(backendPublicIP) && npm run scan
+    export backendIP=$(backendPublicIP)
+    npm run scan
   displayName: 'Static Code Analysis'
 
 - script: |
