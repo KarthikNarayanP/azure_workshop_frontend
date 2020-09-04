@@ -14,15 +14,16 @@ steps:
   displayName: 'Install Node.js'
 
 - script: |
+    echo $backendIP
     npm install
   displayName: 'npm install'
 - script: |
-    npm run scan
+    backendIP=$backendIP && npm run scan
   displayName: 'Static Code Analysis'
 
 - script: |
-    npm test
-    npm run scan
+    backendIP=$backendIP && npm test
+    backendIP=$backendIP && npm run scan
   displayName: 'Execute Unit Test'
 
 - script: |
