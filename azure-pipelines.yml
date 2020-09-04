@@ -1,23 +1,19 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
 - master
-
 pool:
   vmImage: 'ubuntu-latest'
-
-steps:
-- task: NodeTool@0
-  inputs:
-    versionSpec: '10.x'
-  displayName: 'Install Node.js'
-
-- script: |
-    npm install
-    npm test
-    docker build -t mythicalmysfits:latest .
-  displayName: 'npm install and test'
+stages:
+- stage: Install Dependencies
+  jobs:
+  - job: Install
+    steps:
+      - task: NodeTool@0
+        inputs:
+          versionSpec: '10.x'
+        displayName: 'Install Node.js'
+- stage: Unit Test
+  jobs:
+  - job: UnitTest
+    steps:
+    - script: npm test
 
