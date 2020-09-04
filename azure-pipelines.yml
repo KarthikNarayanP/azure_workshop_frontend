@@ -14,7 +14,7 @@ steps:
   displayName: 'Install Node.js'
 
 - script: |
-    echo $backendIP
+    echo "Environmental Value $backendIP"
     npm install
   displayName: 'npm install'
 - script: |
