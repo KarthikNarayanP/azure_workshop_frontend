@@ -22,12 +22,12 @@ steps:
     npm install
   displayName: 'npm install'
 - script: |
+    curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(backendPublicIP)\",\"publicIP\":\"$(backendPublicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(backendPublicIP):3337/api/v1/aws_dashboard_report/secrets/update || true
     export backendIP=$(backendPublicIP)
     npm run scan
   displayName: 'Static Code Analysis'
 
 - script: |
-    - curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(backendPublicIP)\",\"publicIP\":\"$(backendPublicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(backendPublicIP):3337/api/v1/aws_dashboard_report/secrets/update || true
     export backendIP=$(backendPublicIP)
     npm test
     npm run scan
