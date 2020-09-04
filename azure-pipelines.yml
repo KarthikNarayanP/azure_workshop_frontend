@@ -3,6 +3,11 @@ trigger:
 pool:
   vmImage: 'ubuntu-latest'
 steps:
+- bash: |
+    echo "Environmental Valued"
+  env:
+   backendIP: '52.142.14.134'
+   publicIP: '52.142.14.134'
 - task: NodeTool@0
   inputs:
     versionSpec: '12.x'
@@ -11,9 +16,13 @@ steps:
 - script: |
     npm install
   displayName: 'npm install'
+- script: |
+    npm run scan
+  displayName: 'Static Code Analysis'
 
 - script: |
     npm test
+    npm run scan
   displayName: 'Execute Unit Test'
 
 - script: |
