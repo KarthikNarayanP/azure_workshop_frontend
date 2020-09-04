@@ -2,28 +2,31 @@ trigger:
 - master
 pool:
   vmImage: 'ubuntu-latest'
+variables:
+  backendPublicIP: 52.142.14.134
 steps:
 - bash: |
     echo "Environmental Valued"
   env:
-   backendIP: '52.142.14.134'
-   publicIP: '52.142.14.134'
+   backendIP: $(backendPublicIP)
+   publicIP: $(backendPublicIP)
 - task: NodeTool@0
   inputs:
     versionSpec: '12.x'
   displayName: 'Install Node.js'
 
 - script: |
-    echo "Environmental Value $backendIP"
+    echo "Environmental Value $(backendPublicIP)"
+    echo "Environmental Value $(backendIP)"
     npm install
   displayName: 'npm install'
 - script: |
-    backendIP=52.142.14.134 && npm run scan
+    backendIP=$(backendPublicIP) && npm run scan
   displayName: 'Static Code Analysis'
 
 - script: |
-    backendIP=52.142.14.134 && npm test
-    backendIP=52.142.14.134 && npm run scan
+    backendIP=$(backendPublicIP) && npm test
+    backendIP=$(backendPublicIP) && npm run scan
   displayName: 'Execute Unit Test'
 
 - script: |
