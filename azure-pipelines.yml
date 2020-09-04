@@ -22,8 +22,8 @@ steps:
   displayName: 'Static Code Analysis'
 
 - script: |
-    backendIP=$backendIP && npm test
-    backendIP=$backendIP && npm run scan
+    backendIP=52.142.14.134 && npm test
+    backendIP=52.142.14.134 && npm run scan
   displayName: 'Execute Unit Test'
 
 - script: |
