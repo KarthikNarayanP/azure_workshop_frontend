@@ -18,7 +18,7 @@ steps:
     npm install
   displayName: 'npm install'
 - script: |
-    backendIP=$backendIP && npm run scan
+    backendIP=52.142.14.134 && npm run scan
   displayName: 'Static Code Analysis'
 
 - script: |
