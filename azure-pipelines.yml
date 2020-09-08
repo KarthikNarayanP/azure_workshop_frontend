@@ -37,3 +37,9 @@ steps:
 - script: |
     docker build -t mythicalmysfits:latest .
   displayName: 'Build Docker Image'
+
+- task: PublishTestResults@2
+  condition: succeededOrFailed()
+  inputs:
+    testRunner: JUnit
+    testResultsFiles: 'test/results/junit.xml'
