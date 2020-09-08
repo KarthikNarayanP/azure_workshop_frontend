@@ -3,7 +3,7 @@ trigger:
 pool:
   vmImage: 'ubuntu-latest'
 variables:
-  backendPublicIP: 52.142.14.134
+  backendPublicIP: 23.100.25.84
   privateIP: 10.0.0.6
   region: South India
   bucket: Temp
