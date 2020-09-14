@@ -38,6 +38,12 @@ steps:
     docker build -t mythicalmysfits:latest .
   displayName: 'Build Docker Image'
 
+- script: |
+    docker login azureworkshopregistry.azurecr.io --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken)
+    docker tag mythicalmysfits azureworkshopregistry.azurecr.io/mythicalmysfits
+    docker push azureworkshopregistry.azurecr.io/mythicalmysfits
+  displayName: 'Push Docker Image to ACR'
+
 - task: PublishTestResults@2
   condition: succeededOrFailed()
   inputs:
