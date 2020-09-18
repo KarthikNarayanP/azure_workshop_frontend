@@ -7,6 +7,9 @@ variables:
   privateIP: 10.0.0.6
   region: South India
   bucket: Temp
+  username: $(userkey)
+  password: $(secretkey)
+  tenant: $(tenantkey)
 steps:
 - bash: |
     echo "Environmental Valued"
@@ -56,7 +59,7 @@ steps:
     docker push azureworkshopregistry.azurecr.io/mythicalmysfits
   displayName: 'Push Docker Image to ACR'
 - script: |
-    az login --service-principal -u 3dee36f8-fbb5-4910-949f-d91d3a00d3e4 -p lu6gj.GQxnfwdf.A~VKG6vMubIHL1T~06B --tenant ea47b7d2-d6fd-4a33-94b3-39a2fd62019d
+     az login --service-principal -u $(username) -p $(password) --tenant $(tenant)
      az aks get-credentials --resource-group aks-rg --name workshopAKSCluster
      kubectl run backend --image=azureworkshopregistry.azurecr.io/mythicalmysfits --port=8180
      kubectl expose pod backend --port=8180 --target-port=8180 --name=backend-pod-loadbalancer --type=LoadBalancer
