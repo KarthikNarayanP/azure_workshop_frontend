@@ -34,16 +34,6 @@ steps:
     npm run scan
   displayName: 'Execute Unit Test'
 
-- script: |
-    docker build -t mythicalmysfits:latest .
-  displayName: 'Build Docker Image'
-
-- script: |
-    docker login azureworkshopregistry.azurecr.io --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken)
-    docker tag mythicalmysfits azureworkshopregistry.azurecr.io/mythicalmysfits
-    docker push azureworkshopregistry.azurecr.io/mythicalmysfits
-  displayName: 'Push Docker Image to ACR'
-
 - task: PublishTestResults@2
   condition: succeededOrFailed()
   inputs:
@@ -55,3 +45,25 @@ steps:
     codeCoverageTool: Cobertura
     summaryFileLocation: '$(System.DefaultWorkingDirectory)/test/results/coverage/clover.xml'
     reportDirectory: '$(System.DefaultWorkingDirectory)/test/results/coverage'
+
+- script: |
+    docker build -t mythicalmysfits:latest .
+  displayName: 'Build Docker Image'
+
+- script: |
+    docker login azureworkshopregistry.azurecr.io --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken)
+    docker tag mythicalmysfits azureworkshopregistry.azurecr.io/mythicalmysfits
+    docker push azureworkshopregistry.azurecr.io/mythicalmysfits
+  displayName: 'Push Docker Image to ACR'
+- script: |
+    az login --service-principal -u 3dee36f8-fbb5-4910-949f-d91d3a00d3e4 -p lu6gj.GQxnfwdf.A~VKG6vMubIHL1T~06B --tenant ea47b7d2-d6fd-4a33-94b3-39a2fd62019d
+     az aks get-credentials --resource-group aks-rg --name workshopAKSCluster
+     kubectl run backend --image=azureworkshopregistry.azurecr.io/mythicalmysfits --port=8180
+     kubectl expose pod backend --port=8180 --target-port=8180 --name=backend-pod-loadbalancer --type=LoadBalancer
+     bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc backend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
+     externalip=$(kubectl get services/backend-pod-loadbalancer -o json | jq '.status.loadBalancer.ingress[0].ip' | tr -d '"')
+     echo $externalip
+     kubectl run frontend --image=azureworkshopregistry.azurecr.io/mythicalmysfits --port=3000 --expose=true --env="REACT_APP_API=$externalip" -- npm start
+     kubectl expose pod frontend --port=3000 --target-port=3000 --name=frontend-pod-loadbalancer --type=LoadBalancer
+     bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc frontend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
+  displayName: 'Deploy Docker Image to EKS'
