@@ -47,10 +47,6 @@ jobs:
       codeCoverageTool: Cobertura
       summaryFileLocation: '$(System.DefaultWorkingDirectory)/test/results/coverage/clover.xml'
       reportDirectory: '$(System.DefaultWorkingDirectory)/test/results/coverage'
-
-  - script: |
-      docker build -t mythicalmysfits:latest .
-    displayName: 'Build Docker Image'
   
 - job: BUILD
   pool:
@@ -70,7 +66,7 @@ jobs:
 # download the artifact and deploy it only if the build job succeeded
 - job: DEPLOY
   pool:
-    vmImage: 'ubuntu-16.04'
+    vmImage: 'ubuntu-latest'
   steps:
   - checkout: none #skip checking out the default repository resource
   - script: |
