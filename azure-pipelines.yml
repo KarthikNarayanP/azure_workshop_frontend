@@ -1,72 +1,89 @@
-trigger:
-- master
-pool:
-  vmImage: 'ubuntu-latest'
-variables:
-  backendPublicIP: $(publicIP)
-  privateIP: 10.0.0.6
-  region: South India
-  bucket: Temp
-  username: $(userkey)
-  password: $(secretkey)
-  tenant: $(tenantkey)
-steps:
-- bash: |
-    echo "Environmental Valued"
-  env:
-   backendIP: $(backendPublicIP)
-   publicIP: $(backendPublicIP)
-- task: NodeTool@0
-  inputs:
-    versionSpec: '12.x'
-  displayName: 'Install Node.js'
+jobs:
+- job: PREBUILD_QA
+  pool:
+   vmImage: 'ubuntu-latest'
+  variables:
+   backendPublicIP: $(publicIP)
+   privateIP: 10.0.0.6
+   region: South India
+   bucket: Temp
+   username: $(userkey)
+   password: $(secretkey)
+   tenant: $(tenantkey)
+  steps:
+  - bash: |
+      echo "Environmental Valued"
+    env:
+      backendIP: $(backendPublicIP)
+      publicIP: $(backendPublicIP)
+  - task: NodeTool@0
+    inputs:
+      versionSpec: '12.x'
+  - script: |
+      echo "Environmental Value $(backendPublicIP)"
+      npm install
+    displayName: 'Install Dependencies'
+    
+  - script: |
+      curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(privateIP)\",\"publicIP\":\"$(backendPublicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(backendPublicIP):3337/api/v1/aws_dashboard_report/secrets/update || true
+      export backendIP=$(backendPublicIP)
+      npm run scan
+    displayName: 'Static Code Analysis'
 
-- script: |
-    echo "Environmental Value $(backendPublicIP)"
-    npm install
-  displayName: 'npm install'
-- script: |
-    curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(privateIP)\",\"publicIP\":\"$(backendPublicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(backendPublicIP):3337/api/v1/aws_dashboard_report/secrets/update || true
-    export backendIP=$(backendPublicIP)
-    npm run scan
-  displayName: 'Static Code Analysis'
+  - script: |
+      export backendIP=$(backendPublicIP)
+      npm test
+      npm run scan
+    displayName: 'Execute Unit Test'
 
-- script: |
-    export backendIP=$(backendPublicIP)
-    npm test
-    npm run scan
-  displayName: 'Execute Unit Test'
+  - task: PublishTestResults@2
+    condition: succeededOrFailed()
+    inputs:
+      testRunner: JUnit
+      testResultsFiles: 'test/results/junit.xml'
+      buildConfiguration: 
+  - task: PublishCodeCoverageResults@1
+    inputs: 
+      codeCoverageTool: Cobertura
+      summaryFileLocation: '$(System.DefaultWorkingDirectory)/test/results/coverage/clover.xml'
+      reportDirectory: '$(System.DefaultWorkingDirectory)/test/results/coverage'
 
-- task: PublishTestResults@2
-  condition: succeededOrFailed()
-  inputs:
-    testRunner: JUnit
-    testResultsFiles: 'test/results/junit.xml'
-    buildConfiguration: 
-- task: PublishCodeCoverageResults@1
-  inputs: 
-    codeCoverageTool: Cobertura
-    summaryFileLocation: '$(System.DefaultWorkingDirectory)/test/results/coverage/clover.xml'
-    reportDirectory: '$(System.DefaultWorkingDirectory)/test/results/coverage'
+  - script: |
+      docker build -t mythicalmysfits:latest .
+    displayName: 'Build Docker Image'
+  
+- job: BUILD
+  pool:
+   vmImage: 'ubuntu-latest'
+  steps:
+  - script: |
+      docker build -t mythicalmysfits:latest .
+    displayName: 'Build Docker Image'
+  - script: |
+      docker login azureworkshopregistry.azurecr.io --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken)
+      docker tag mythicalmysfits azureworkshopregistry.azurecr.io/mythicalmysfits
+      docker push azureworkshopregistry.azurecr.io/mythicalmysfits
+    displayName: 'Push Docker Image to ACR'
+  dependsOn: PREBUILD_QA
+  condition: succeeded()
 
-- script: |
-    docker build -t mythicalmysfits:latest .
-  displayName: 'Build Docker Image'
-
-- script: |
-    docker login azureworkshopregistry.azurecr.io --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken)
-    docker tag mythicalmysfits azureworkshopregistry.azurecr.io/mythicalmysfits
-    docker push azureworkshopregistry.azurecr.io/mythicalmysfits
-  displayName: 'Push Docker Image to ACR'
-- script: |
-     az login --service-principal -u $(username) -p $(password) --tenant $(tenant)
-     az aks get-credentials --resource-group aks-rg --name workshopAKSCluster
-     kubectl run backend --image=azureworkshopregistry.azurecr.io/mythicalmysfits --port=8180
-     kubectl expose pod backend --port=8180 --target-port=8180 --name=backend-pod-loadbalancer --type=LoadBalancer
-     bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc backend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
-     externalip=$(kubectl get services/backend-pod-loadbalancer -o json | jq '.status.loadBalancer.ingress[0].ip' | tr -d '"')
-     echo $externalip
-     kubectl run frontend --image=azureworkshopregistry.azurecr.io/mythicalmysfits --port=3000 --expose=true --env="REACT_APP_API=$externalip" -- npm start
-     kubectl expose pod frontend --port=3000 --target-port=3000 --name=frontend-pod-loadbalancer --type=LoadBalancer
-     bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc frontend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
-  displayName: 'Deploy Docker Image to EKS'
+# download the artifact and deploy it only if the build job succeeded
+- job: DEPLOY
+  pool:
+    vmImage: 'ubuntu-16.04'
+  steps:
+  - checkout: none #skip checking out the default repository resource
+  - script: |
+      az login --service-principal -u $(userkey) -p $(secretkey) --tenant $(tenantkey)
+      az aks get-credentials --resource-group aks-rg --name workshopAKSCluster
+      kubectl run backend --image=azureworkshopregistry.azurecr.io/mythicalmysfits --port=8180
+      kubectl expose pod backend --port=8180 --target-port=8180 --name=backend-pod-loadbalancer --type=LoadBalancer
+      bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc backend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
+      externalip=$(kubectl get services/backend-pod-loadbalancer -o json | jq '.status.loadBalancer.ingress[0].ip' | tr -d '"')
+      echo $externalip
+      kubectl run frontend --image=azureworkshopregistry.azurecr.io/mythicalmysfits --port=3000 --expose=true --env="REACT_APP_API=$externalip" -- npm start
+      kubectl expose pod frontend --port=3000 --target-port=3000 --name=frontend-pod-loadbalancer --type=LoadBalancer
+      bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc frontend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
+    displayName: 'Deploy Docker Image to EKS'
+  dependsOn: BUILD
+  condition: succeeded()
