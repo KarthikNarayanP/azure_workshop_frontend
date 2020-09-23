@@ -145,7 +145,7 @@ stages:
           az login --service-principal -u $(userkey) -p $(secretkey) --tenant $(tenantkey)
           az vm run-command invoke -g WorkshopCLIResources -n WorkshopVMCLI --command-id RunShellScript --scripts "docker login azureworkshopregistry.azurecr.io --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken)"
           az vm run-command invoke -g WorkshopCLIResources -n WorkshopVMCLI --command-id RunShellScript --scripts "docker run --name mythicalmysfitsfrontend -p 3000:3000 -p 8180:8180 --rm -i -t -d azureworkshopregistry.azurecr.io/mythicalmysfits:latest"
-          az vm run-command invoke -g WorkshopCLIResources -n WorkshopVMCLI --command-id RunShellScript --scripts "docker exec -d -e REACT_APP_API=$(backendPublicIP) mythicalmysfitsfrontend npm start"
+          az vm run-command invoke -g WorkshopCLIResources -n WorkshopVMCLI --command-id RunShellScript --scripts "docker exec -d -e REACT_APP_API=$(publicIP) mythicalmysfitsfrontend npm start"
         displayName: 'Deploying To Virtual Machine'
       
     - job: SMOKE_TEST
@@ -166,3 +166,63 @@ stages:
         displayName: 'Smoke Test'
       dependsOn: DEPLOYMENT
       condition: succeeded()
+- stage: FUNCTIONAL_ASSURANCE
+  displayName: FUNCTIONAL ASSURANCE
+  dependsOn:
+   - POST_BUILD
+  condition: succeeded()
+  jobs:
+    - job: API_TEST
+      displayName: API TEST
+      pool:
+        vmImage: 'ubuntu-latest'
+        variables:
+          backendPublicIP: $(publicIP)
+          privateIP: 10.0.0.6
+          region: South India
+          bucket: Temp
+      steps:
+      - checkout: git://AZURE_WORKSHOP_PROJECT/azurewrkshp-functional-assurance
+      - script: |
+          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/aws_dashboard_report/secrets/update || true  
+          export backendPrivateIP=$(publicIP)
+          export publicIP=$(publicIP)
+          mvn clean test -Dcucumber.options="--tags @APITest" -DExecutionPlatform="AWS_CHROME"
+        displayName: 'Rest Assured API Test'
+      dependsOn: []
+    - job: UI_TEST
+      displayName: UI TEST
+      pool:
+        vmImage: 'ubuntu-latest'
+        variables:
+          backendPublicIP: $(publicIP)
+          privateIP: 10.0.0.6
+          region: South India
+          bucket: Temp
+      steps:
+      - checkout: git://AZURE_WORKSHOP_PROJECT/azurewrkshp-functional-assurance
+      - script: |
+          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/aws_dashboard_report/secrets/update || true  
+          export backendPrivateIP=$(publicIP)
+          export publicIP=$(publicIP)
+          mvn clean test -Dcucumber.options="--tags @UITest" -DExecutionPlatform="AWS_CHROME"
+        displayName: 'Selenium UI Test'
+      dependsOn: []
+    - job: RWD_TEST
+      displayName: RWD TEST
+      pool:
+        vmImage: 'ubuntu-latest'
+        variables:
+          backendPublicIP: $(publicIP)
+          privateIP: 10.0.0.6
+          region: South India
+          bucket: Temp
+      steps:
+      - checkout: git://AZURE_WORKSHOP_PROJECT/azurewrkshp-functional-assurance
+      - script: |
+          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/aws_dashboard_report/secrets/update || true  
+          export backendPrivateIP=$(publicIP)
+          export publicIP=$(publicIP)
+          mvn clean test -Dcucumber.options="--tags @UIRWDTest" -DExecutionPlatform="AWS_CHROME"
+        displayName: 'Selenium RWD Test'
+      dependsOn: []
