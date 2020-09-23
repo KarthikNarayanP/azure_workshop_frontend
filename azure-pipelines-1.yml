@@ -1,0 +1,185 @@
+resources:
+ repositories:
+ - repository: FrontendRepo
+   endpoint: MyAzureReposGitServiceConnection
+   type: git
+   name: azure_workshop_frontend
+ - repository: BackendRepo
+   endpoint: MyAzureReposGitServiceConnection
+   type: git
+   name: azurewrkshop-backend
+ - repository: FunctionalRepo
+   endpoint: MyAzureReposGitServiceConnection
+   type: git
+   name: azurewrkshp-functional-assurance
+
+stages:
+ - stage: PREBUILD_QA_FRONTEND
+   displayName: PREBUILD QA FRONTEND
+   jobs:
+    - job: PREBUILD_QA
+      displayName: DEVELOPER QUALITY GATE
+      pool:
+        vmImage: 'ubuntu-latest'
+        variables:
+        backendPublicIP: $(publicIP)
+        privateIP: 10.0.0.6
+        region: South India
+        bucket: Temp
+        username: $(userkey)
+        password: $(secretkey)
+        tenant: $(tenantkey)
+      steps:
+      - checkout: FrontendRepo
+      - bash: |
+          echo "Environmental Valued"
+        env:
+          backendIP: $(backendPublicIP)
+          publicIP: $(backendPublicIP)
+      - task: NodeTool@0
+        inputs:
+          versionSpec: '12.x'
+      - script: |
+          echo "Environmental Value $(backendPublicIP)"
+          npm install
+        displayName: 'Install Dependencies'
+        
+      - script: |
+          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(privateIP)\",\"publicIP\":\"$(backendPublicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(backendPublicIP):3337/api/v1/aws_dashboard_report/secrets/update || true
+          export backendIP=$(backendPublicIP)
+          npm run scan
+        displayName: 'Static Code Analysis'
+
+      - script: |
+          export backendIP=$(backendPublicIP)
+          npm test
+          npm run scan
+        displayName: 'Unit Test'
+
+      - task: PublishTestResults@2
+        condition: succeededOrFailed()
+        inputs:
+          testRunner: JUnit
+          testResultsFiles: 'test/results/junit.xml'
+          buildConfiguration: 
+      - task: PublishCodeCoverageResults@1
+        inputs: 
+          codeCoverageTool: Cobertura
+          summaryFileLocation: '$(System.DefaultWorkingDirectory)/test/results/coverage/clover.xml'
+          reportDirectory: '$(System.DefaultWorkingDirectory)/test/results/coverage'
+      
+    - job: BUILD
+      displayName: BUILD AND PUSH TO ACR
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+      - checkout: FrontendRepo
+      - script: |
+          docker build -t mythicalmysfits:latest .
+        displayName: 'Build Docker Image'
+      - script: |
+          docker login azureworkshopregistry.azurecr.io --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken)
+          docker tag mythicalmysfits azureworkshopregistry.azurecr.io/mythicalmysfits
+          docker push azureworkshopregistry.azurecr.io/mythicalmysfits
+        displayName: 'Push Docker Image to ACR'
+      dependsOn: PREBUILD_QA
+      condition: succeeded()
+
+    # download the artifact and deploy it only if the build job succeeded
+    - job: DEPLOY_WITH_VIRTUAL_SERVICES_TO_EKS
+      displayName: DEPLOY WITH VIRTUAL SERVICES TO EKS
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+      - checkout: none
+      - script: |
+          az login --service-principal -u $(userkey) -p $(secretkey) --tenant $(tenantkey)
+          az aks get-credentials --resource-group aks-rg --name workshopAKSCluster
+          kubectl run backend --image=azureworkshopregistry.azurecr.io/mythicalmysfits --port=8180
+          kubectl expose pod backend --port=8180 --target-port=8180 --name=backend-pod-loadbalancer --type=LoadBalancer
+          bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc backend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
+          externalip=$(kubectl get services/backend-pod-loadbalancer -o json | jq '.status.loadBalancer.ingress[0].ip' | tr -d '"')
+          echo $externalip
+          kubectl run frontend --image=azureworkshopregistry.azurecr.io/mythicalmysfits --port=3000 --expose=true --env="REACT_APP_API=$externalip" -- npm start
+          kubectl expose pod frontend --port=3000 --target-port=3000 --name=frontend-pod-loadbalancer --type=LoadBalancer
+          bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc frontend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
+        displayName: 'Deploy Docker Image to EKS'
+      dependsOn: BUILD
+      condition: succeeded()
+ - stage: PREBUILD_QA_BACKEND
+   displayName: PREBUILD QA BACKEND
+   jobs:
+    - job: PREBUILD_QA
+      displayName: DEVELOPER QUALITY GATE
+      pool:
+        vmImage: 'ubuntu-latest'
+        variables:
+        backendIP: $(publicIP)
+      steps:
+      - checkout: BackendRepo
+      - script: |
+          export backendIP=$(backendIP)
+          chmod +x gradlew
+          ./gradlew clean sonarqube
+          curl -s --connect-timeout 8 -d "{\"moduleName\":\"codecoverage_static_api\",\"status\":\"Completed\"}"   -H 'Content-Type:application/json' http://$backendIP:3337/api/v1/aws_dashboard_report/moudule/update || true
+        displayName: 'Static Code Analysis'
+      - script: |
+          export backendIP=$(backendIP)
+          chmod +x gradlew
+          ./gradlew clean codeCoverageReport sonarqube
+        displayName: 'Unit Test'
+      - task: PublishTestResults@1
+        condition: succeededOrFailed()
+        inputs:
+          testRunner: JUnit
+          testResultsFiles: '*/build/test-results/test/junit.xml'
+      - task: PublishCodeCoverageResults@1
+        condition: succeededOrFailed()
+        inputs: 
+            codeCoverageTool: JaCoCo
+            summaryFileLocation: 'build/reports/jacoco/codeCoverageReport/codeCoverageReport.xml'
+            reportDirectory: 'build/reports/jacoco/codeCoverageReport/html'
+ - stage: POST_BUILD
+   displayName: POST BULID QA
+   dependsOn:
+   - PREBUILD_QA_FRONTEND
+   - PREBUILD_QA_BACKEND
+   condition: succeeded()
+  
+   jobs:
+    - job: DEPLOYMENT
+      pool:
+        vmImage: 'ubuntu-latest'
+        variables:
+          backendPublicIP: $(publicIP)
+          privateIP: 10.0.0.6
+          region: South India
+          bucket: Temp
+      steps:
+      - checkout: none
+      - script: |
+          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(privateIP)\",\"publicIP\":\"$(backendPublicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(backendPublicIP):3337/api/v1/aws_dashboard_report/secrets/update || true  
+          az login --service-principal -u $(userkey) -p $(secretkey) --tenant $(tenantkey)
+          az vm run-command invoke -g WorkshopCLIResources -n WorkshopVMCLI --command-id RunShellScript --scripts "docker login azureworkshopregistry.azurecr.io --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken)"
+          az vm run-command invoke -g WorkshopCLIResources -n WorkshopVMCLI --command-id RunShellScript --scripts "docker run --name mythicalmysfitsfrontend -p 3000:3000 -p 8180:8180 --rm -i -t -d azureworkshopregistry.azurecr.io/mythicalmysfits:latest"
+          az vm run-command invoke -g WorkshopCLIResources -n WorkshopVMCLI --command-id RunShellScript --scripts "docker exec -d -e REACT_APP_API=$(backendPublicIP) mythicalmysfitsfrontend npm start"
+        displayName: 'Deploying To Virtual Machine'
+      
+    - job: SMOKE_TEST
+      pool:
+        vmImage: 'ubuntu-latest'
+        variables:
+          backendPublicIP: $(publicIP)
+          privateIP: 10.0.0.6
+          region: South India
+          bucket: Temp
+      steps:
+      - checkout: FunctionalRepo
+      - script: |
+          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(privateIP)\",\"publicIP\":\"$(backendPublicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(backendPublicIP):3337/api/v1/aws_dashboard_report/secrets/update || true  
+          export backendPrivateIP=$(backendPublicIP)
+          export publicIP=$(backendPublicIP)
+          mvn clean test -Dcucumber.options="--tags @Smoke" -DExecutionPlatform="AWS_CHROME"
+        displayName: 'Smoke Test'
+      dependsOn: DEPLOYMENT
+      condition: succeeded()
