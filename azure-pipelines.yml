@@ -56,9 +56,9 @@ jobs:
       docker build -t mythicalmysfits:latest .
     displayName: 'Build Docker Image'
   - script: |
-      docker login azureworkshopregistry.azurecr.io --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken)
-      docker tag mythicalmysfits azureworkshopregistry.azurecr.io/mythicalmysfits
-      docker push azureworkshopregistry.azurecr.io/mythicalmysfits
+      docker login $(acrRegistry) --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken)
+      docker tag mythicalmysfits $(acrRegistry)/mythicalmysfits
+      docker push $(acrRegistry)/mythicalmysfits
     displayName: 'Push Docker Image to ACR'
   dependsOn: PREBUILD_QA
   condition: succeeded()
@@ -72,12 +72,12 @@ jobs:
   - script: |
       az login --service-principal -u $(userkey) -p $(secretkey) --tenant $(tenantkey)
       az aks get-credentials --resource-group aks-rg --name workshopAKSCluster
-      kubectl run backend --image=azureworkshopregistry.azurecr.io/mythicalmysfits --port=8180
+      kubectl run backend --image=$(acrRegistry)/mythicalmysfits --port=8180
       kubectl expose pod backend --port=8180 --target-port=8180 --name=backend-pod-loadbalancer --type=LoadBalancer
       bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc backend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
       externalip=$(kubectl get services/backend-pod-loadbalancer -o json | jq '.status.loadBalancer.ingress[0].ip' | tr -d '"')
       echo $externalip
-      kubectl run frontend --image=azureworkshopregistry.azurecr.io/mythicalmysfits --port=3000 --expose=true --env="REACT_APP_API=$externalip" -- npm start
+      kubectl run frontend --image=$(acrRegistry)/mythicalmysfits --port=3000 --expose=true --env="REACT_APP_API=$externalip" -- npm start
       kubectl expose pod frontend --port=3000 --target-port=3000 --name=frontend-pod-loadbalancer --type=LoadBalancer
       bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc frontend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
     displayName: 'Deploy Docker Image to EKS'
