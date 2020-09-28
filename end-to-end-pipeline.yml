@@ -1,3 +1,17 @@
+resources:
+ repositories:
+ - repository: FrontendRepo
+   endpoint: MyAzureReposGitServiceConnection
+   type: git
+   name: azure_workshop_frontend
+ - repository: BackendRepo
+   endpoint: MyAzureReposGitServiceConnection
+   type: git
+   name: azurewrkshop-backend
+ - repository: FunctionalRepo
+   endpoint: MyAzureReposGitServiceConnection
+   type: git
+   name: azurewrkshp-functional-assurance
 stages:
 - stage: PREBUILD_QA_FRONTEND
   displayName: PREBUILD QA FRONTEND
@@ -14,7 +28,7 @@ stages:
         password: $(secretkey)
         tenant: $(tenantkey)
     steps:
-      - checkout: self
+      - checkout: FrontendRepo
         persistCredentials: true
       - bash: |
           echo "Environmental Valued"
@@ -55,7 +69,7 @@ stages:
     pool:
         vmImage: 'ubuntu-latest'
     steps:
-      - checkout: self
+      - checkout: FrontendRepo
       - script: |
           docker build -t mythicalmysfits:latest .
         displayName: 'Build Docker Image'
@@ -99,7 +113,7 @@ stages:
         variables:
         backendIP: $(publicIP)
       steps:
-      - checkout: git://AZURE_WORKSHOP_PROJECT/azure_workshop_backend
+      - checkout: BackendRepo
         persistCredentials: true
       - script: |
           export backendIP=$(publicIP)
@@ -157,7 +171,7 @@ stages:
           region: South India
           bucket: Temp
       steps:
-      - checkout: git://AZURE_WORKSHOP_PROJECT/azurewrkshp-functional-assurance
+      - checkout: FunctionalRepo
       - script: |
           curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/aws_dashboard_report/secrets/update || true  
           export backendPrivateIP=$(publicIP)
@@ -182,7 +196,7 @@ stages:
           region: South India
           bucket: Temp
       steps:
-      - checkout: git://AZURE_WORKSHOP_PROJECT/azurewrkshp-functional-assurance
+      - checkout: FunctionalRepo
       - script: |
           curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/aws_dashboard_report/secrets/update || true  
           export backendPrivateIP=$(publicIP)
@@ -200,7 +214,7 @@ stages:
           region: South India
           bucket: Temp
       steps:
-      - checkout: git://AZURE_WORKSHOP_PROJECT/azurewrkshp-functional-assurance
+      - checkout: FunctionalRepo
       - script: |
           curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/aws_dashboard_report/secrets/update || true  
           export backendPrivateIP=$(publicIP)
@@ -218,7 +232,7 @@ stages:
           region: South India
           bucket: Temp
       steps:
-      - checkout: git://AZURE_WORKSHOP_PROJECT/azurewrkshp-functional-assurance
+      - checkout: FunctionalRepo
       - script: |
           curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/aws_dashboard_report/secrets/update || true  
           export backendPrivateIP=$(publicIP)
