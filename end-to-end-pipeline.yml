@@ -1,15 +1,15 @@
 resources:
  repositories:
  - repository: FrontendRepo
-   endpoint: MyAzureReposGitServiceConnection
+   endpoint: AZUREMYSERVICECONNECTION
    type: git
    name: azure_workshop_frontend
  - repository: BackendRepo
-   endpoint: MyAzureReposGitServiceConnection
+   endpoint: AZUREMYSERVICECONNECTION
    type: git
    name: azurewrkshop-backend
  - repository: FunctionalRepo
-   endpoint: MyAzureReposGitServiceConnection
+   endpoint: AZUREMYSERVICECONNECTION
    type: git
    name: azurewrkshp-functional-assurance
 stages:
