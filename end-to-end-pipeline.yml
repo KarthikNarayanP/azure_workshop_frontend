@@ -11,7 +11,7 @@ resources:
  - repository: FunctionalRepo
    endpoint: AZUREMYSERVICECONNECTION
    type: git
-   name: azurewrkshp-functional-assurance
+   name: azure_workshop_functional_assurance
 stages:
 - stage: PREBUILD_QA_FRONTEND
   displayName: PREBUILD QA FRONTEND
