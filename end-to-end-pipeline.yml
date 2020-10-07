@@ -167,7 +167,7 @@ stages:
         inputs:
           sshEndpoint: MY_VM_SSH_CONNECTION
           runOptions: 'commands'
-          commands: 'sudo chmod 666 /var/run/docker.sock;docker login $(acrRegistry) --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken) 2> /dev/null;docker stop mythicalmysfitsfrontend || true; docker run --name mythicalmysfitsfrontend -p 3000:3000 -p 8180:8180 --rm -i -t -d $(acrRegistry)/mythicalmysfits:latest 2> /dev/null;docker exec -d -e REACT_APP_API=$(publicIP) mythicalmysfitsfrontend npm start'
+          commands: 'sudo chmod 666 /var/run/docker.sock;docker login $(acrRegistry) --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken) 2> /dev/null;( docker stop mythicalmysfitsfrontend > /dev/null ) 2>/dev/null || true; docker run --name mythicalmysfitsfrontend -p 3000:3000 -p 8180:8180 --rm -i -t -d $(acrRegistry)/mythicalmysfits:latest 2> /dev/null;docker exec -d -e REACT_APP_API=$(publicIP) mythicalmysfitsfrontend npm start'
           failOnStdErr: true
       
     - job: SMOKE_TEST
