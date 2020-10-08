@@ -118,7 +118,7 @@ stages:
       displayName: DEVELOPER QUALITY GATE
       pool:
         vmImage: 'ubuntu-latest'
-        variables:
+      variables:
         backendIP: $(publicIP)
       steps:
       - checkout: BackendRepo
@@ -138,7 +138,8 @@ stages:
         condition: succeededOrFailed()
         inputs:
           testRunner: JUnit
-          testResultsFiles: '*/build/test-results/test/junit.xml'
+          testResultsFiles: '**/TEST-*.xml'
+          mergeTestResults: true
       - task: PublishCodeCoverageResults@1
         condition: succeededOrFailed()
         inputs: 
