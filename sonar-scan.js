@@ -35,7 +35,7 @@ async function scan() {
     {
       serverUrl : 'http://'+server+':9000',
       options: {
-        'sonar.projectName': 'awswrkshp-aut-frontend',
+        'sonar.projectName': 'azurewrkshp-aut-frontend',
         'sonar.projectDescription': 'Mythical Mysfits'
       }
     },
@@ -49,7 +49,7 @@ async function postExecutionPublishReport(status) {
   let strPayLoad ={"moduleName":"codecoverage_static_ui","status":status};
   try{
     const response = await request
-    .post(`http://${reportServer}:3337/api/v1/aws_dashboard_report/moudule/update`)
+    .post(`http://${reportServer}:3337/api/v1/azure_dashboard_report/moudule/update`)
     .send(strPayLoad)
     .set('content-type', 'application/json')
     .set('accept', 'application/json')
