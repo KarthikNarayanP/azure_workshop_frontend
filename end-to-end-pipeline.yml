@@ -21,9 +21,9 @@ stages:
     pool:
         vmImage: 'ubuntu-latest'
         variables:
-        privateIP: 10.0.0.6
-        region: South India
-        bucket: Temp
+        privateIP: $(publicIP)
+        region: $(regionprimary)
+        bucket: $(bucketurl)
         username: $(userkey)
         password: $(secretkey)
         tenant: $(tenantkey)
@@ -41,7 +41,7 @@ stages:
         displayName: 'Install Dependencies'
         
       - script: |
-          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/aws_dashboard_report/secrets/update || true
+          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/azure_dashboard_report/secrets/update || true
           export backendIP=$(publicIP)
           npm run scan
         displayName: 'Static Code Analysis'
@@ -127,7 +127,7 @@ stages:
           export backendIP=$(publicIP)
           chmod +x gradlew
           ./gradlew clean sonarqube
-          curl -s --connect-timeout 8 -d "{\"moduleName\":\"codecoverage_static_api\",\"status\":\"Completed\"}"   -H 'Content-Type:application/json' http://$backendIP:3337/api/v1/aws_dashboard_report/moudule/update || true
+          curl -s --connect-timeout 8 -d "{\"moduleName\":\"codecoverage_static_api\",\"status\":\"Completed\"}"   -H 'Content-Type:application/json' http://$backendIP:3337/api/v1/azure_dashboard_report/moudule/update || true
         displayName: 'Static Code Analysis'
       - script: |
           export backendIP=$(publicIP)
@@ -158,9 +158,9 @@ stages:
         vmImage: 'ubuntu-latest'
         variables:
           backendPublicIP: $(publicIP)
-          privateIP: 10.0.0.6
-          region: South India
-          bucket: Temp
+          privateIP: $(publicIP)
+          region: $(regionprimary)
+          bucket: $(bucketurl)
       steps:
       - checkout: none
       - task: SSH@0
@@ -176,17 +176,22 @@ stages:
         vmImage: 'ubuntu-latest'
         variables:
           backendPublicIP: $(publicIP)
-          privateIP: 10.0.0.6
-          region: South India
-          bucket: Temp
+          privateIP: $(publicIP)
+          region: $(regionprimary)
+          bucket: $(bucketurl)
       steps:
       - checkout: FunctionalRepo
       - script: |
-          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/aws_dashboard_report/secrets/update || true  
+          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/azure_dashboard_report/secrets/update || true  
           export backendPrivateIP=$(publicIP)
           export publicIP=$(publicIP)
-          mvn clean test -Dcucumber.options="--tags @Smoke" -DExecutionPlatform="AWS_CHROME"
+          mvn clean test -Dcucumber.options="--tags @Smoke" -DExecutionPlatform="AZURE_CHROME"
         displayName: 'Smoke Test'
+      - script: |
+          mv "target/extent-reports/Mythical_Mysfits_E-Shop.html" "target/extent-reports/SMOKE_E-Shop.html"
+          az storage blob upload-batch --destination '$web' --account-name "$(blobAccount)" --source "target/extent-reports" --sas-token "$(sasTokenBlob)" --connection-string "$(connectionStringBlob)"
+        displayName: 'Publish Reports To Blob'
+        condition: always()
       dependsOn: DEPLOYMENT
       condition: succeeded()
 - stage: FUNCTIONAL_ASSURANCE
@@ -201,17 +206,22 @@ stages:
         vmImage: 'ubuntu-latest'
         variables:
           backendPublicIP: $(publicIP)
-          privateIP: 10.0.0.6
-          region: South India
-          bucket: Temp
+          privateIP: $(publicIP)
+          region: $(regionprimary)
+          bucket: $(bucketurl)
       steps:
       - checkout: FunctionalRepo
       - script: |
-          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/aws_dashboard_report/secrets/update || true  
+          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/azure_dashboard_report/secrets/update || true  
           export backendPrivateIP=$(publicIP)
           export publicIP=$(publicIP)
-          mvn clean test -Dcucumber.options="--tags @APITest" -DExecutionPlatform="AWS_CHROME"
+          mvn clean test -Dcucumber.options="--tags @APITest" -DExecutionPlatform="AZURE_CHROME"
         displayName: 'Rest Assured API Test'
+      - script: |
+          mv "target/extent-reports/Mythical_Mysfits_E-Shop.html" "target/extent-reports/API_E-Shop.html"
+          az storage blob upload-batch --destination '$web' --account-name "$(blobAccount)" --source "target/extent-reports" --sas-token "$(sasTokenBlob)" --connection-string "$(connectionStringBlob)"
+        displayName: 'Publish Reports To Blob'
+        condition: always()
       dependsOn: []
     - job: UI_TEST
       displayName: UI TEST
@@ -219,17 +229,22 @@ stages:
         vmImage: 'ubuntu-latest'
         variables:
           backendPublicIP: $(publicIP)
-          privateIP: 10.0.0.6
-          region: South India
-          bucket: Temp
+          privateIP: $(publicIP)
+          region: $(regionprimary)
+          bucket: $(bucketurl)
       steps:
       - checkout: FunctionalRepo
       - script: |
-          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/aws_dashboard_report/secrets/update || true  
+          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/azure_dashboard_report/secrets/update || true  
           export backendPrivateIP=$(publicIP)
           export publicIP=$(publicIP)
-          mvn clean test -Dcucumber.options="--tags @UITest" -DExecutionPlatform="AWS_CHROME"
+          mvn clean test -Dcucumber.options="--tags @UITest" -DExecutionPlatform="AZURE_CHROME"
         displayName: 'Selenium UI Test'
+      - script: |
+          mv "target/extent-reports/Mythical_Mysfits_E-Shop.html" "target/extent-reports/UI_E-Shop.html"
+          az storage blob upload-batch --destination '$web' --account-name "$(blobAccount)" --source "target/extent-reports" --sas-token "$(sasTokenBlob)" --connection-string "$(connectionStringBlob)"
+        displayName: 'Publish Reports To Blob'
+        condition: always()
       dependsOn: []
     - job: RWD_TEST
       displayName: RWD TEST
@@ -237,15 +252,20 @@ stages:
         vmImage: 'ubuntu-latest'
         variables:
           backendPublicIP: $(publicIP)
-          privateIP: 10.0.0.6
-          region: South India
-          bucket: Temp
+          privateIP: $(publicIP)
+          region: $(regionprimary)
+          bucket: $(bucketurl)
       steps:
       - checkout: FunctionalRepo
       - script: |
-          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/aws_dashboard_report/secrets/update || true  
+          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/azure_dashboard_report/secrets/update || true  
           export backendPrivateIP=$(publicIP)
           export publicIP=$(publicIP)
-          mvn clean test -Dcucumber.options="--tags @UIRWDTest" -DExecutionPlatform="AWS_CHROME"
+          mvn clean test -Dcucumber.options="--tags @UIRWDTest" -DExecutionPlatform="AZURE_CHROME"
         displayName: 'Selenium RWD Test'
+      - script: |
+          mv "target/extent-reports/Mythical_Mysfits_E-Shop.html" "target/extent-reports/RWD_E-Shop.html"
+          az storage blob upload-batch --destination '$web' --account-name "$(blobAccount)" --source "target/extent-reports" --sas-token "$(sasTokenBlob)" --connection-string "$(connectionStringBlob)"
+        displayName: 'Publish Reports To Blob'
+        condition: always()
       dependsOn: []
