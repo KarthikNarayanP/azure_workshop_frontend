@@ -4,9 +4,9 @@ jobs:
    vmImage: 'ubuntu-latest'
   variables:
    backendPublicIP: $(publicIP)
-   privateIP: 10.0.0.6
-   region: South India
-   bucket: Temp
+   privateIP: $(publicIP)
+   region: $(regionprimary)
+   bucket: $(bucketurl)
    username: $(userkey)
    password: $(secretkey)
    tenant: $(tenantkey)
