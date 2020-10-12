@@ -20,7 +20,7 @@ stages:
     displayName: DEVELOPER QUALITY GATE
     pool:
         vmImage: 'ubuntu-latest'
-        variables:
+    variables:
         privateIP: $(publicIP)
         region: $(regionprimary)
         bucket: $(bucketurl)
@@ -41,7 +41,7 @@ stages:
         displayName: 'Install Dependencies'
         
       - script: |
-          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/azure_dashboard_report/secrets/update || true
+          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucketurl)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/azure_dashboard_report/secrets/update || true
           export backendIP=$(publicIP)
           npm run scan
         displayName: 'Static Code Analysis'
@@ -182,7 +182,7 @@ stages:
       steps:
       - checkout: FunctionalRepo
       - script: |
-          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/azure_dashboard_report/secrets/update || true  
+          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucketurl)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/azure_dashboard_report/secrets/update || true  
           export backendPrivateIP=$(publicIP)
           export publicIP=$(publicIP)
           mvn clean test -Dcucumber.options="--tags @Smoke" -DExecutionPlatform="AZURE_CHROME"
@@ -212,7 +212,7 @@ stages:
       steps:
       - checkout: FunctionalRepo
       - script: |
-          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/azure_dashboard_report/secrets/update || true  
+          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucketurl)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/azure_dashboard_report/secrets/update || true  
           export backendPrivateIP=$(publicIP)
           export publicIP=$(publicIP)
           mvn clean test -Dcucumber.options="--tags @APITest" -DExecutionPlatform="AZURE_CHROME"
@@ -235,7 +235,7 @@ stages:
       steps:
       - checkout: FunctionalRepo
       - script: |
-          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/azure_dashboard_report/secrets/update || true  
+          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucketurl)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/azure_dashboard_report/secrets/update || true  
           export backendPrivateIP=$(publicIP)
           export publicIP=$(publicIP)
           mvn clean test -Dcucumber.options="--tags @UITest" -DExecutionPlatform="AZURE_CHROME"
@@ -258,7 +258,7 @@ stages:
       steps:
       - checkout: FunctionalRepo
       - script: |
-          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucket)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/azure_dashboard_report/secrets/update || true  
+          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucketurl)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/azure_dashboard_report/secrets/update || true  
           export backendPrivateIP=$(publicIP)
           export publicIP=$(publicIP)
           mvn clean test -Dcucumber.options="--tags @UIRWDTest" -DExecutionPlatform="AZURE_CHROME"
