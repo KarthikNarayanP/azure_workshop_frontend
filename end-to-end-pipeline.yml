@@ -12,6 +12,14 @@ resources:
    endpoint: AZUREMYSERVICECONNECTION
    type: git
    name: azure_workshop_functional_assurance
+ - repository: PerformanceRepo
+   endpoint: AZUREMYSERVICECONNECTION
+   type: git
+   name: azure_workshop_tests_performance
+ - repository: AccessibilityRepo
+   endpoint: AZUREMYSERVICECONNECTION
+   type: git
+   name: azure_workshop_tests_accessibility
 stages:
 - stage: PREBUILD_QA_FRONTEND
   displayName: PREBUILD QA FRONTEND
@@ -293,15 +301,39 @@ stages:
           pip3 install requests
         displayName: 'Pulling Docker Images'
       - script: |
-          docker run -e HEAP='-Xms4g -Xmx4g' --volume `pwd`:/jmeter egaillardon/jmeter:5.1.1-2.0.0 --nongui --testfile AWSWrksp_NFTPerformance_Scenario.jmx -Jhost=$UIURL -Jport=3000 -Japihost=$backendPublicIP -Japiport=8180 --logfile testoutput.jtl
+          docker run -e HEAP='-Xms4g -Xmx4g' --volume `pwd`:/jmeter egaillardon/jmeter:5.1.1-2.0.0 --nongui --testfile AZUREWrksp_NFTPerformance_Scenario.jmx -Jhost=$(publicIP) -Jport=3000 -Japihost=$(publicIP) -Japiport=8180 --logfile testoutput.jtl
           docker run --volume `pwd`:/jmeter egaillardon/jmeter:5.1.1-2.0.0 --reportonly summary_report.csv --reportoutputfolder /jmeter/htmlreports
           cat summary_report.csv
-          python3 performance_result_process.py http://$backendPublicIP:3337/api/v1/aws_dashboard_report/moudule/update
+          python3 performance_result_process.py http://$(publicIP):3337/api/v1/azure_dashboard_report/moudule/update
           cd htmlreports
           ls
-        displayName: 'Execute Pipeline Tests'
+        displayName: 'Execute Performance Tests'
       - script: |
+            mv "htmlreports/index.html" "htmlreports/PERFORMANCE.html"
             az storage blob upload-batch --destination '$web' --account-name "$(blobAccount)" --source "htmlreports" --sas-token "$(sasTokenBlob)" --connection-string "$(connectionStringBlob)"
         displayName: 'Publish Reports To Blob'
         condition: always()
       dependsOn: []
+
+    - job: ACCESSIBILITY_TEST
+      displayName: ACCESSIBILITY TEST
+      pool:
+        vmImage: 'ubuntu-latest'
+        variables:
+          backendPublicIP: $(publicIP)
+          privateIP: $(publicIP)
+          region: $(regionprimary)
+          bucket: $(bucketurl)
+      steps:
+      - checkout: AccessibilityRepo
+      - script: |
+          export frontendIP=$(UIURL)
+          export dashboardIP=$(UIURL)
+          mvn clean test
+        displayName: 'Execute Accessibility Tests'
+      - script: |
+            mv "target/extent-reports/Report.html" "target/extent-reports/ACCESSIBILITY.html"
+            az storage blob upload-batch --destination '$web' --account-name "$(blobAccount)" --source "htmlreports" --sas-token "$(sasTokenBlob)" --connection-string "$(connectionStringBlob)"
+        displayName: 'Publish Reports To Blob'
+        condition: succeeded()
+      dependsOn: FUNCTIONAL_ASSURANCE
