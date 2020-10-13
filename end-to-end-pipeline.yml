@@ -336,4 +336,4 @@ stages:
             az storage blob upload-batch --destination '$web' --account-name "$(blobAccount)" --source "htmlreports" --sas-token "$(sasTokenBlob)" --connection-string "$(connectionStringBlob)"
         displayName: 'Publish Reports To Blob'
         condition: succeeded()
-      dependsOn: FUNCTIONAL_ASSURANCE
+      dependsOn: PERFORMANCE_TEST
