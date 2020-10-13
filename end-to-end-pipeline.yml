@@ -327,8 +327,8 @@ stages:
       steps:
       - checkout: AccessibilityRepo
       - script: |
-          export frontendIP=$(UIURL)
-          export dashboardIP=$(UIURL)
+          export frontendIP=$(publicIP)
+          export dashboardIP=$(publicIP)
           mvn clean test
         displayName: 'Execute Accessibility Tests'
       - script: |
