@@ -269,3 +269,39 @@ stages:
         displayName: 'Publish Reports To Blob'
         condition: always()
       dependsOn: []
+- stage: EXPERIENCE_ASSURANCE
+  displayName: EXPERIENCE ASSURANCE
+  dependsOn:
+   - FUNCTIONAL_ASSURANCE
+  condition: always()
+  jobs:
+    - job: PERFORMANCE_TEST
+      displayName: PERFORMANCE TEST
+      pool:
+        vmImage: 'ubuntu-latest'
+        variables:
+          backendPublicIP: $(publicIP)
+          privateIP: $(publicIP)
+          region: $(regionprimary)
+          bucket: $(bucketurl)
+      steps:
+      - checkout: PerformanceRepo
+      - script: |
+          sudo chmod a+rwx $PWD
+          docker pull egaillardon/jmeter:5.1.1-2.0.0
+          pip3 install pandas
+          pip3 install requests
+        displayName: 'Pulling Docker Images'
+      - script: |
+          docker run -e HEAP='-Xms4g -Xmx4g' --volume `pwd`:/jmeter egaillardon/jmeter:5.1.1-2.0.0 --nongui --testfile AWSWrksp_NFTPerformance_Scenario.jmx -Jhost=$UIURL -Jport=3000 -Japihost=$backendPublicIP -Japiport=8180 --logfile testoutput.jtl
+          docker run --volume `pwd`:/jmeter egaillardon/jmeter:5.1.1-2.0.0 --reportonly summary_report.csv --reportoutputfolder /jmeter/htmlreports
+          cat summary_report.csv
+          python3 performance_result_process.py http://$backendPublicIP:3337/api/v1/aws_dashboard_report/moudule/update
+          cd htmlreports
+          ls
+        displayName: 'Execute Pipeline Tests'
+      - script: |
+            az storage blob upload-batch --destination '$web' --account-name "$(blobAccount)" --source "htmlreports" --sas-token "$(sasTokenBlob)" --connection-string "$(connectionStringBlob)"
+        displayName: 'Publish Reports To Blob'
+        condition: always()
+      dependsOn: []
