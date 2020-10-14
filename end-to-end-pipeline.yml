@@ -330,10 +330,12 @@ stages:
           export frontendIP=$(publicIP)
           export dashboardIP=$(publicIP)
           mvn clean test
+          cd target
+          ls
         displayName: 'Execute Accessibility Tests'
       - script: |
-            mv "target/extent-reports/Report.html" "target/extent-reports/ACCESSIBILITY.html"
-            az storage blob upload-batch --destination '$web' --account-name "$(blobAccount)" --source "htmlreports" --sas-token "$(sasTokenBlob)" --connection-string "$(connectionStringBlob)"
+            mv "target/Report.html" "target/ACCESSIBILITY.html"
+            az storage blob upload-batch --destination '$web' --account-name "$(blobAccount)" --source "target" --sas-token "$(sasTokenBlob)" --connection-string "$(connectionStringBlob)"
         displayName: 'Publish Reports To Blob'
         condition: succeeded()
       dependsOn: PERFORMANCE_TEST
