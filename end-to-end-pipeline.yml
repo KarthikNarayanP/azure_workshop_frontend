@@ -196,7 +196,7 @@ stages:
           mvn clean test -Dcucumber.options="--tags @Smoke" -DExecutionPlatform="AZURE_CHROME"
         displayName: 'Smoke Test'
       - script: |
-          mv "target/extent-reports/Mythical_Mysfits_E-Shop.html" "target/extent-reports/SMOKE_E-Shop.html"
+          mv "target/extent-reports/Digital_Shopify_E-Shop.html" "target/extent-reports/Digital_Shopify_SMOKE_E-Shop.html"
           az storage blob upload-batch --destination '$web' --account-name "$(blobAccount)" --source "target/extent-reports" --sas-token "$(sasTokenBlob)" --connection-string "$(connectionStringBlob)"
         displayName: 'Publish Reports To Blob'
         condition: always()
@@ -226,7 +226,7 @@ stages:
           mvn clean test -Dcucumber.options="--tags @APITest" -DExecutionPlatform="AZURE_CHROME"
         displayName: 'Rest Assured API Test'
       - script: |
-          mv "target/extent-reports/Mythical_Mysfits_E-Shop.html" "target/extent-reports/API_E-Shop.html"
+          mv "target/extent-reports/Digital_Shopify_E-Shop.html" "target/extent-reports/Digital_Shopify_API_E-Shop.html"
           az storage blob upload-batch --destination '$web' --account-name "$(blobAccount)" --source "target/extent-reports" --sas-token "$(sasTokenBlob)" --connection-string "$(connectionStringBlob)"
         displayName: 'Publish Reports To Blob'
         condition: always()
@@ -249,7 +249,7 @@ stages:
           mvn clean test -Dcucumber.options="--tags @UITest" -DExecutionPlatform="AZURE_CHROME"
         displayName: 'Selenium UI Test'
       - script: |
-          mv "target/extent-reports/Mythical_Mysfits_E-Shop.html" "target/extent-reports/UI_E-Shop.html"
+          mv "target/extent-reports/Digital_Shopify_E-Shop.html" "target/extent-reports/Digital_Shopify_UI_E-Shop.html"
           az storage blob upload-batch --destination '$web' --account-name "$(blobAccount)" --source "target/extent-reports" --sas-token "$(sasTokenBlob)" --connection-string "$(connectionStringBlob)"
         displayName: 'Publish Reports To Blob'
         condition: always()
@@ -272,7 +272,7 @@ stages:
           mvn clean test -Dcucumber.options="--tags @UIRWDTest" -DExecutionPlatform="AZURE_CHROME"
         displayName: 'Selenium RWD Test'
       - script: |
-          mv "target/extent-reports/Mythical_Mysfits_E-Shop.html" "target/extent-reports/RWD_E-Shop.html"
+          mv "target/extent-reports/Digital_Shopify_E-Shop.html" "target/extent-reports/Digital_Shopify_RWD_E-Shop.html"
           az storage blob upload-batch --destination '$web' --account-name "$(blobAccount)" --source "target/extent-reports" --sas-token "$(sasTokenBlob)" --connection-string "$(connectionStringBlob)"
         displayName: 'Publish Reports To Blob'
         condition: always()
@@ -305,8 +305,6 @@ stages:
           docker run --volume `pwd`:/jmeter egaillardon/jmeter:5.1.1-2.0.0 --reportonly summary_report.csv --reportoutputfolder /jmeter/htmlreports
           cat summary_report.csv
           python3 performance_result_process.py http://$(publicIP):3337/api/v1/azure_dashboard_report/moudule/update
-          cd htmlreports
-          ls
         displayName: 'Execute Performance Tests'
       - script: |
             mv "htmlreports/index.html" "htmlreports/PERFORMANCE.html"
