@@ -73,7 +73,7 @@ class Header extends Component {
                             </Typography>
                         </NavLink>
                         <Typography variant="h6" className="title" align="center">
-                            E-Shop
+                       
                         </Typography>
                         <IconButton color="secondary" aria-label="Menu" edge='end'>
                             <NavLink id='basket' to='/basket' exact className='linkstyle'>
