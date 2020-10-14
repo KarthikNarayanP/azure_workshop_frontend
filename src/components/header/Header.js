@@ -64,8 +64,8 @@ class Header extends Component {
                             <Typography variant="h6" color="inherit">
                                 {
                                     <img
-                                        title="E-Shop"
-                                        alt="E-Shop"
+                                        title="Digital-Shopify"
+                                        alt="Digital-Shopify"
                                         src={logo}
                                         className="logo"
                                     />
