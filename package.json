@@ -53,15 +53,8 @@
     "start-server-and-test": "^1.11.0",
     "superagent": "5.3.1",
     "xml2js": "0.4.23",
-    "selenium-webdriver": "^4.0.0-alpha.4",
-    "puppeteer": "^2.0.0",
-    "testcafe": "1.6.0",
     "playwright": "^1.1.1",
-    "faker": "^4.1.0",
-    "chromedriver": "79.0.3",
-    "geckodriver": "1.19.1",
-    "iedriver": "3.14.2",
-    "ms-chromium-edge-driver": "^0.2.5"
+    "faker": "^4.1.0"
   },
   "main": "index.js",
   "scripts": {
