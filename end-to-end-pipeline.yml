@@ -79,12 +79,12 @@ stages:
     steps:
       - checkout: FrontendRepo
       - script: |
-          docker build -t mythicalmysfits:latest .
+          docker build -t digitalshopify:latest .
         displayName: 'Build Docker Image'
       - script: |
           docker login $(acrRegistry) --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken)
-          docker tag mythicalmysfits $(acrRegistry)/mythicalmysfits
-          docker push $(acrRegistry)/mythicalmysfits
+          docker tag digitalshopify $(acrRegistry)/digitalshopify
+          docker push $(acrRegistry)/digitalshopify
         displayName: 'Push Docker Image to ACR'
     dependsOn: PREBUILD_QA
     condition: succeeded()
@@ -108,12 +108,12 @@ stages:
         targetType: 'inline'
         script: |
           kubectl create secret docker-registry mykubetokenacr --docker-server=$(acrRegistry) --docker-username=00000000-0000-0000-0000-000000000000 --docker-password=$(azureACRToken)
-          kubectl run backend --image=$(acrRegistry)/mythicalmysfits --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacr"}] } }' --port=8180
+          kubectl run backend --image=$(acrRegistry)/digitalshopify --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacr"}] } }' --port=8180
           kubectl expose pod backend --port=8180 --target-port=8180 --name=backend-pod-loadbalancer --type=LoadBalancer
           bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc backend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
           externalip=$(kubectl get services/backend-pod-loadbalancer -o json | jq '.status.loadBalancer.ingress[0].ip' | tr -d '"')
           echo $externalip
-          kubectl run frontend --image=$(acrRegistry)/mythicalmysfits --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacr"}] } }' --port=3000 --expose=true --env="REACT_APP_API=$externalip" -- npm start
+          kubectl run frontend --image=$(acrRegistry)/digitalshopify --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacr"}] } }' --port=3000 --expose=true --env="REACT_APP_API=$externalip" -- npm start
           kubectl expose pod frontend --port=3000 --target-port=3000 --name=frontend-pod-loadbalancer --type=LoadBalancer
           bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc frontend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
     dependsOn: BUILD
@@ -176,7 +176,7 @@ stages:
         inputs:
           sshEndpoint: MY_VM_SSH_CONNECTION
           runOptions: 'commands'
-          commands: 'sudo chmod 666 /var/run/docker.sock;docker login $(acrRegistry) --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken) 2> /dev/null;( docker stop mythicalmysfitsfrontend > /dev/null ) 2>/dev/null || true; docker run --name mythicalmysfitsfrontend -p 3000:3000 -p 8180:8180 --rm -i -t -d $(acrRegistry)/mythicalmysfits:latest 2> /dev/null;docker exec -d -e REACT_APP_API=$(publicIP) mythicalmysfitsfrontend npm start'
+          commands: 'sudo chmod 666 /var/run/docker.sock;docker login $(acrRegistry) --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken) 2> /dev/null;( docker stop digitalshopifyfrontend > /dev/null ) 2>/dev/null || true; docker run --name digitalshopifyfrontend -p 3000:3000 -p 8180:8180 --rm -i -t -d $(acrRegistry)/digitalshopify:latest 2> /dev/null;docker exec -d -e REACT_APP_API=$(publicIP) digitalshopifyfrontend npm start'
           failOnStdErr: true
       
     - job: SMOKE_TEST
