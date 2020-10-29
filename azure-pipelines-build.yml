@@ -1,0 +1,229 @@
+resources:
+ repositories:
+ - repository: FrontendRepo
+   endpoint: AZUREMYSERVICECONNECTION
+   type: git
+   name: azure_workshop_frontend
+ - repository: BackendRepo
+   endpoint: AZUREMYSERVICECONNECTION
+   type: git
+   name: azure_workshop_backend
+stages:
+- stage: BUILD_PIPELINE_FRONTEND
+  displayName: BUILD PIPELINE FRONTEND
+  jobs:
+  - job: PREBUILD_QA
+    displayName: DEVELOPER QUALITY GATE
+    pool:
+        vmImage: 'ubuntu-latest'
+    variables:
+        privateIP: $(publicIP)
+        region: $(regionprimary)
+        bucket: $(bucketurl)
+        username: $(userkey)
+        password: $(secretkey)
+        tenant: $(tenantkey)
+    steps:
+      - checkout: FrontendRepo
+        persistCredentials: true
+      - bash: |
+          echo "Environmental Valued"
+      - task: NodeTool@0
+        inputs:
+          versionSpec: '12.x'
+      - script: |
+          echo "Environmental Value $(backendPublicIP)"
+          npm install
+        displayName: 'Install Dependencies'
+        
+      - script: |
+          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucketurl)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/azure_dashboard_report/secrets/update || true
+          export backendIP=$(publicIP)
+          npm run scan
+        displayName: 'Static Code Analysis'
+
+      - script: |
+          export backendIP=$(publicIP)
+          npm test
+          npm run scan
+        displayName: 'Unit Test'
+
+      - task: PublishTestResults@2
+        condition: succeededOrFailed()
+        inputs:
+          testRunner: JUnit
+          testResultsFiles: 'test/results/junit.xml'
+          buildConfiguration: 
+      - task: PublishCodeCoverageResults@1
+        inputs: 
+          codeCoverageTool: Cobertura
+          summaryFileLocation: '$(System.DefaultWorkingDirectory)/test/results/coverage/clover.xml'
+          reportDirectory: '$(System.DefaultWorkingDirectory)/test/results/coverage'
+      
+  - job: BUILD
+    displayName: BUILD AND PUSH TO ACR
+    pool:
+        vmImage: 'ubuntu-latest'
+    steps:
+      - checkout: FrontendRepo
+      - script: |
+          docker build -t digitalshopify:latest .
+        displayName: 'Build Docker Image'
+      - script: |
+          docker login $(acrRegistry) --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken)
+          docker tag digitalshopify $(acrRegistry)/digitalshopify
+          docker push $(acrRegistry)/digitalshopify
+        displayName: 'Push Docker Image to ACR'
+    dependsOn: PREBUILD_QA
+    condition: succeeded()
+
+    # download the artifact and deploy it only if the build job succeeded
+  - job: DEPLOY_WITH_VIRTUAL_SERVICES_TO_AKS
+    displayName: DEPLOY WITH VIRTUAL SERVICES TO AKS
+    pool:
+        vmImage: 'ubuntu-latest'
+    steps:
+    - checkout: none
+    - task: Kubernetes@1
+      inputs:
+        connectionType: Kubernetes Service Connection
+        kubernetesServiceEndpoint: MYAKSCONNECTION
+        command: login
+      displayName: 'Login to AKS'
+    - task: Bash@3
+      displayName: 'Deployment'        
+      inputs:
+        targetType: 'inline'
+        script: |
+          kubectl create secret docker-registry mykubetokenacr --docker-server=$(acrRegistry) --docker-username=00000000-0000-0000-0000-000000000000 --docker-password=$(azureACRToken)
+          kubectl run backend --image=$(acrRegistry)/digitalshopify --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacr"}] } }' --port=8180
+          kubectl expose pod backend --port=8180 --target-port=8180 --name=backend-pod-loadbalancer --type=LoadBalancer
+          bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc backend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
+          externalip=$(kubectl get services/backend-pod-loadbalancer -o json | jq '.status.loadBalancer.ingress[0].ip' | tr -d '"')
+          echo $externalip
+          kubectl run frontend --image=$(acrRegistry)/digitalshopify --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacr"}] } }' --port=3000 --expose=true --env="REACT_APP_API=$externalip" -- npm start
+          kubectl expose pod frontend --port=3000 --target-port=3000 --name=frontend-pod-loadbalancer --type=LoadBalancer
+          bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc frontend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
+    dependsOn: BUILD
+    condition: succeeded()
+  - job: BVT_SYSTEM_TESTS
+    displayName: BVT - UI TESTS
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - bash: |
+        echo "Environmental Valued"
+      env:
+        backendIP: $(backendPublicIP)
+        publicIP: $(backendPublicIP)
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '12.x'
+    - script: |
+        echo "Environmental Value $(backendPublicIP)"
+        npm install
+      displayName: 'Install Dependencies'
+  
+    - script: |
+        npm run cli
+      displayName: 'UI System Tests'
+    dependsOn: DEPLOY_WITH_VIRTUAL_SERVICES_TO_AKS
+    condition: succeeded()
+- stage: BUILD_PIPELINE_BACKEND
+  displayName: BUILD PIPELINE BACKEND
+  dependsOn: []
+  jobs:
+    - job: PREBUILD_QA
+      displayName: DEVELOPER QUALITY GATE
+      pool:
+        vmImage: 'ubuntu-latest'
+      variables:
+        backendIP: $(publicIP)
+      steps:
+      - checkout: BackendRepo
+        persistCredentials: true
+      - script: |
+          export backendIP=$(publicIP)
+          chmod +x gradlew
+          ./gradlew clean sonarqube
+          curl -s --connect-timeout 8 -d "{\"moduleName\":\"codecoverage_static_api\",\"status\":\"Completed\"}"   -H 'Content-Type:application/json' http://$backendIP:3337/api/v1/azure_dashboard_report/moudule/update || true
+        displayName: 'Static Code Analysis'
+      - script: |
+          export backendIP=$(publicIP)
+          chmod +x gradlew
+          ./gradlew clean codeCoverageReport sonarqube
+        displayName: 'Unit Test'
+      - task: PublishTestResults@1
+        condition: succeededOrFailed()
+        inputs:
+          testRunner: JUnit
+          testResultsFiles: '**/TEST-*.xml'
+          mergeTestResults: true
+      - task: PublishCodeCoverageResults@1
+        condition: succeededOrFailed()
+        inputs: 
+            codeCoverageTool: JaCoCo
+            summaryFileLocation: 'build/reports/jacoco/codeCoverageReport/codeCoverageReport.xml'
+            reportDirectory: 'build/reports/jacoco/codeCoverageReport/html'
+    - job: BUILD
+      displayName: BUILD AND PUSH TO ACR
+      pool:
+          vmImage: 'ubuntu-latest'
+      steps:
+        - checkout: BackendRepo
+        - script: |
+            chmod +x ./gradlew
+            ./gradlew clean build
+            docker-compose build
+          displayName: 'Build Docker Image'
+        - script: |
+            docker login $(acrRegistry) --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken)
+            docker tag mcmoe/mssqldocker:v2017.CU20.0 $(acrRegistry)/mcmoe/mssqldocker:v2017.CU20.0
+            docker push $(acrRegistry)/mcmoe/mssqldocker:v2017.CU20.0
+          displayName: 'Push MSSQL Docker Image to ACR'
+        - script: |
+            docker tag ctsshop/service-registry-1.0.jar:v1.0 $(acrRegistry)/ctsshop/service-registry-1.0.jar:v1.0
+            docker push $(acrRegistry)/ctsshop/service-registry-1.0.jar:v1.0
+          displayName: 'Push SERVICE-REGISTRY Docker Image to ACR'
+        - script: |
+            docker tag ctsshop/catalogue-service-1.0.jar:v1.0 $(acrRegistry)/ctsshop/catalogue-service-1.0.jar:v1.0
+            docker push $(acrRegistry)/ctsshop/catalogue-service-1.0.jar:v1.0
+          displayName: 'Push CATALOGUE-SERVICE Docker Image to ACR'
+        - script: |
+            docker tag ctsshop/customer-service-1.0.jar:v1.0 $(acrRegistry)/ctsshop/customer-service-1.0.jar:v1.0
+            docker push $(acrRegistry)/ctsshop/customer-service-1.0.jar:v1.0
+          displayName: 'Push Docker Image to ACR CUSTOMER-SERVICE'
+        - script: |
+            docker tag ctsshop/image-service-1.0.jar:v1.0 $(acrRegistry)/ctsshop/image-service-1.0.jar:v1.0
+            docker push $(acrRegistry)/ctsshop/image-service-1.0.jar:v1.0
+          displayName: 'Push IMAGE-SERVICE Docker Image to ACR'
+        - script: |
+            docker tag ctsshop/payment-service-1.0.jar:v1.0 $(acrRegistry)/ctsshop/payment-service-1.0.jar:v1.0
+            docker push $(acrRegistry)/ctsshop/payment-service-1.0.jar:v1.0
+          displayName: 'Push PAYMENT-SERVICE Docker Image to ACR'
+      dependsOn: PREBUILD_QA
+      condition: succeeded()       
+- stage: DEPLOYMENT
+  displayName: POST BULID QA
+  dependsOn:
+   - BUILD_PIPELINE_FRONTEND
+   - BUILD_PIPELINE_BACKEND
+  condition: succeeded()
+  jobs:
+    - job: DEPLOYMENT
+      pool:
+        vmImage: 'ubuntu-latest'
+        variables:
+          backendPublicIP: $(publicIP)
+          privateIP: $(publicIP)
+          region: $(regionprimary)
+          bucket: $(bucketurl)
+      steps:
+      - checkout: none
+      - task: SSH@0
+        displayName: 'Deployment to Virtual Machine'        
+        inputs:
+          sshEndpoint: MY_VM_SSH_CONNECTION
+          runOptions: 'commands'
+          commands: 'sudo chmod 666 /var/run/docker.sock;docker login $(acrRegistry) --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken) 2> /dev/null;( docker stop digitalshopifyfrontend > /dev/null ) 2>/dev/null || true; docker run --name digitalshopifyfrontend -p 3000:3000 -p 8180:8180 --rm -i -t -d $(acrRegistry)/digitalshopify:latest 2> /dev/null;docker exec -d -e REACT_APP_API=$(publicIP) digitalshopifyfrontend npm start'
+          failOnStdErr: true
