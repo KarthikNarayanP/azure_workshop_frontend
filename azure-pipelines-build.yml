@@ -240,9 +240,9 @@ stages:
             kubectl run customer-service --image=$(acrRegistry)/ctsshop/customer-service-1.0.jar:v1.0 --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacrs"}] } }' --port=8182
             kubectl expose pod customer-service --port=8182 --target-port=8182 --name=customer-service --type=LoadBalancer
             kubectl run image-service --image=$(acrRegistry)/ctsshop/image-service-1.0.jar:v1.0 --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacrs"}] } }' --port=8183
-            kubectl expose pod image-service --port=8183 --target-port=8183 --name=image-service --type=LoadBalancer
+            # kubectl expose pod image-service --port=8183 --target-port=8183 --name=image-service --type=LoadBalancer
             kubectl run payment-service --image=$(acrRegistry)/ctsshop/payment-service-1.0.jar:v1.0 --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacrs"}] } }' --port=8184		
-            kubectl expose pod payment-service --port=8184 --target-port=8184 --name=payment-service --type=LoadBalancer
+            # kubectl expose pod payment-service --port=8184 --target-port=8184 --name=payment-service --type=LoadBalancer
             externalip=$(kubectl get services/service-registry -o json | jq '.status.loadBalancer.ingress[0].ip' | tr -d '"')
             echo $externalip
             kubectl run frontendtestapp --image=$(acrRegistry)/digitalshopify --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacrs"}] } }' --port=3000 --expose=true --env="REACT_APP_API=$externalip" -- npm start
