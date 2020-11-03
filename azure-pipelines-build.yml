@@ -37,13 +37,15 @@ stages:
         displayName: 'Install Dependencies'
         
       - script: |
-          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucketurl)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/azure_dashboard_report/secrets/update || true
-          export backendIP=$(publicIP)
+          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(sonarIP)\",\"publicIP\":\"$(dashboardIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucketurl)\"}"   -H 'Content-Type:application/json' http://$(dashboardIP):3337/api/v1/azure_dashboard_report/secrets/update || true
+          export dashboardIP=$(dashboardIP)
+          export backendIP=$(sonarIP)
           npm run scan
         displayName: 'Static Code Analysis'
 
       - script: |
-          export backendIP=$(publicIP)
+          export dashboardIP=$(dashboardIP)
+          export backendIP=$(sonarIP)
           npm test
           npm run scan
         displayName: 'Unit Test'
@@ -143,13 +145,13 @@ stages:
       - checkout: BackendRepo
         persistCredentials: true
       - script: |
-          export backendIP=$(publicIP)
+          export backendIP=$(sonarIP)
           chmod +x gradlew
           ./gradlew clean sonarqube
           curl -s --connect-timeout 8 -d "{\"moduleName\":\"codecoverage_static_api\",\"status\":\"Completed\"}"   -H 'Content-Type:application/json' http://$backendIP:3337/api/v1/azure_dashboard_report/moudule/update || true
         displayName: 'Static Code Analysis'
       - script: |
-          export backendIP=$(publicIP)
+          export backendIP=$(sonarIP)
           chmod +x gradlew
           ./gradlew clean codeCoverageReport sonarqube
         displayName: 'Unit Test'
