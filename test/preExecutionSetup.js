@@ -1,6 +1,6 @@
 module.exports =  async function postExecutionPublishReport() {
-    let reportServer = process.env.backendIP || "localhost";
-    console.log('Report Server :'+process.env.backendIP);
+    let reportServer = process.env.dashboardIP || "localhost";
+    console.log('Report Server :'+process.env.dashboardIP);
     const request = require('superagent');
     let strPayLoad = { "moduleName": "unittest_ui", "pass": 0, "fail": 0, "status": "In Progress" };
     try {
