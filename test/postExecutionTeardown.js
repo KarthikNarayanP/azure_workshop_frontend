@@ -9,7 +9,7 @@ module.exports = async function postExecutionPublishReport() {
 
 
     const request = require('superagent');
-    let reportServer = process.env.backendIP || "localhost";
+    let reportServer = process.env.dashboardIP || "localhost";
     let jsonAllTestCases = await convertUnitTest();
     console.log(jsonAllTestCases.testsuites.failures[0]);
     let status = 'Pass';
