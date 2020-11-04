@@ -44,7 +44,7 @@ async function scan() {
   }
   
 async function postExecutionPublishReport(status) {
-  let reportServer = process.env.backendIP || 'localhost';
+  let reportServer = process.env.dashboardIP || 'localhost';
   const request = require('superagent');
   let strPayLoad ={"moduleName":"codecoverage_static_ui","status":status};
   try{
