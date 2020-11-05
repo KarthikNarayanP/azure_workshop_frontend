@@ -52,7 +52,7 @@ describe('Register test', () => {
 
     it("Register - Last name should be present", async () => {
         const wrapper = shallow(<Register history={history}/>);
-        const lastname = wrapper.find('#lastName')
+        const lastname = wrapper.find('#lastName1')
         expect(lastname.exists()).toBe(true);
     });
 
