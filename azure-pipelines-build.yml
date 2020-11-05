@@ -14,6 +14,7 @@ stages:
   jobs:
   - job: PREBUILD_QA
     displayName: DEVELOPER QUALITY GATE
+    continueOnError: false
     pool:
         vmImage: 'ubuntu-latest'
     variables:
@@ -47,9 +48,13 @@ stages:
           export dashboardIP=$(dashboardIP)
           export backendIP=$(sonarIP)
           npm test
-          npm run scan
         displayName: 'Unit Test'
-
+        continueOnError: false
+      - script: |
+          export dashboardIP=$(dashboardIP)
+          export backendIP=$(sonarIP)
+          npm run scan
+        displayName: 'Code Coverage'
       - task: PublishTestResults@2
         condition: succeededOrFailed()
         inputs:
