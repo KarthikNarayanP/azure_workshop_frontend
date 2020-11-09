@@ -38,7 +38,6 @@ stages:
         displayName: 'Install Dependencies'
         
       - script: |
-          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(sonarIP)\",\"publicIP\":\"$(dashboardIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucketurl)\"}"   -H 'Content-Type:application/json' http://$(dashboardIP):3337/api/v1/azure_dashboard_report/secrets/update || true
           export dashboardIP=$(dashboardIP)
           export backendIP=$(sonarIP)
           npm run scan
@@ -111,6 +110,9 @@ stages:
           kubectl run frontend --image=$(acrRegistry)/digitalshopify --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacr"}] } }' --port=3000 --expose=true --env="REACT_APP_API=$externalip" -- npm start
           kubectl expose pod frontend --port=3000 --target-port=3000 --name=frontend-pod-loadbalancer --type=LoadBalancer
           bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc frontend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
+          externalipfront=$(kubectl get services/frontend-pod-loadbalancer -o json | jq '.status.loadBalancer.ingress[0].ip' | tr -d '"')
+          curl -s --connect-timeout 8 -d "{\"frontendDevIP\":\"$externalipfront\"}"   -H 'Content-Type:application/json' http://$(dashboardIP):3337/api/v1/azure_dashboard_report/secrets/updateprebuildinfra || true
+          curl -s --connect-timeout 8 -d "{\"moduleName\":\"prebuild\",\"status\":\"Completed\"}"   -H 'Content-Type:application/json' http://$(dashboardIP):3337/api/v1/azure_dashboard_report/moudule/updatebuildcompletion || true
     dependsOn: BUILD
     condition: succeeded()
   - job: BVT_SYSTEM_TESTS
