@@ -153,12 +153,14 @@ stages:
         persistCredentials: true
       - script: |
           export backendIP=$(sonarIP)
+          export INSTRUMENTATION_KEY=$(INSTRUMENTATION_KEY)
           chmod +x gradlew
           ./gradlew clean sonarqube
           curl -s --connect-timeout 8 -d "{\"moduleName\":\"codecoverage_static_api\",\"status\":\"Completed\"}"   -H 'Content-Type:application/json' http://$backendIP:3337/api/v1/azure_dashboard_report/moudule/update || true
         displayName: 'Static Code Analysis'
       - script: |
           export backendIP=$(sonarIP)
+          export INSTRUMENTATION_KEY=$(INSTRUMENTATION_KEY)
           chmod +x gradlew
           ./gradlew clean codeCoverageReport sonarqube
         displayName: 'Unit Test'
@@ -181,6 +183,7 @@ stages:
       steps:
         - checkout: BackendRepo
         - script: |
+            export INSTRUMENTATION_KEY=$(INSTRUMENTATION_KEY)
             chmod +x ./gradlew
             ./gradlew clean build
             docker-compose build
