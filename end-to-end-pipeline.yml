@@ -12,20 +12,13 @@ resources:
    endpoint: AZUREMYSERVICECONNECTION
    type: git
    name: azure_workshop_functional_assurance
- - repository: PerformanceRepo
-   endpoint: AZUREMYSERVICECONNECTION
-   type: git
-   name: azure_workshop_tests_performance
- - repository: AccessibilityRepo
-   endpoint: AZUREMYSERVICECONNECTION
-   type: git
-   name: azure_workshop_tests_accessibility
 stages:
-- stage: PREBUILD_QA_FRONTEND
-  displayName: PREBUILD QA FRONTEND
+- stage: BUILD_PIPELINE_FRONTEND
+  displayName: BUILD PIPELINE FRONTEND
   jobs:
   - job: PREBUILD_QA
     displayName: DEVELOPER QUALITY GATE
+    continueOnError: false
     pool:
         vmImage: 'ubuntu-latest'
     variables:
@@ -49,17 +42,23 @@ stages:
         displayName: 'Install Dependencies'
         
       - script: |
-          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucketurl)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/azure_dashboard_report/secrets/update || true
-          export backendIP=$(publicIP)
+          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(sonarIP)\",\"publicIP\":\"$(dashboardIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucketurl)\"}"   -H 'Content-Type:application/json' http://$(dashboardIP):3337/api/v1/azure_dashboard_report/secrets/update || true
+          export dashboardIP=$(dashboardIP)
+          export backendIP=$(sonarIP)
           npm run scan
         displayName: 'Static Code Analysis'
 
       - script: |
-          export backendIP=$(publicIP)
+          export dashboardIP=$(dashboardIP)
+          export backendIP=$(sonarIP)
           npm test
-          npm run scan
         displayName: 'Unit Test'
-
+        continueOnError: false
+      - script: |
+          export dashboardIP=$(dashboardIP)
+          export backendIP=$(sonarIP)
+          npm run scan
+        displayName: 'Code Coverage'
       - task: PublishTestResults@2
         condition: succeededOrFailed()
         inputs:
@@ -118,8 +117,31 @@ stages:
           bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc frontend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
     dependsOn: BUILD
     condition: succeeded()
-- stage: PREBUILD_QA_BACKEND
-  displayName: PREBUILD QA BACKEND
+  - job: BVT_SYSTEM_TESTS
+    displayName: BVT - UI TESTS
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - bash: |
+        echo "Environmental Valued"
+      env:
+        backendIP: $(backendPublicIP)
+        publicIP: $(backendPublicIP)
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '12.x'
+    - script: |
+        echo "Environmental Value $(backendPublicIP)"
+        npm install
+      displayName: 'Install Dependencies'
+  
+    - script: |
+        npm run cli
+      displayName: 'UI System Tests'
+    dependsOn: DEPLOY_WITH_VIRTUAL_SERVICES_TO_AKS
+    condition: succeeded()
+- stage: BUILD_PIPELINE_BACKEND
+  displayName: BUILD PIPELINE BACKEND
   dependsOn: []
   jobs:
     - job: PREBUILD_QA
@@ -132,13 +154,13 @@ stages:
       - checkout: BackendRepo
         persistCredentials: true
       - script: |
-          export backendIP=$(publicIP)
+          export backendIP=$(sonarIP)
           chmod +x gradlew
           ./gradlew clean sonarqube
           curl -s --connect-timeout 8 -d "{\"moduleName\":\"codecoverage_static_api\",\"status\":\"Completed\"}"   -H 'Content-Type:application/json' http://$backendIP:3337/api/v1/azure_dashboard_report/moudule/update || true
         displayName: 'Static Code Analysis'
       - script: |
-          export backendIP=$(publicIP)
+          export backendIP=$(sonarIP)
           chmod +x gradlew
           ./gradlew clean codeCoverageReport sonarqube
         displayName: 'Unit Test'
@@ -153,187 +175,73 @@ stages:
         inputs: 
             codeCoverageTool: JaCoCo
             summaryFileLocation: 'build/reports/jacoco/codeCoverageReport/codeCoverageReport.xml'
-            reportDirectory: 'build/reports/jacoco/codeCoverageReport/html'          
-- stage: POST_BUILD
-  displayName: POST BULID QA
-  dependsOn:
-   - PREBUILD_QA_FRONTEND
-   - PREBUILD_QA_BACKEND
+            reportDirectory: 'build/reports/jacoco/codeCoverageReport/html'
+    - job: BUILD
+      displayName: BUILD AND PUSH TO ACR
+      pool:
+          vmImage: 'ubuntu-latest'
+      steps:
+        - checkout: BackendRepo
+        - script: |
+            chmod +x ./gradlew
+            ./gradlew clean build
+            docker-compose build
+          displayName: 'Build Docker Image'
+        - script: |
+            docker login $(acrRegistry) --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken)
+            docker tag mcmoe/mssqldocker:v2017.CU20.0 $(acrRegistry)/mcmoe/mssqldocker:v2017.CU20.0
+            docker push $(acrRegistry)/mcmoe/mssqldocker:v2017.CU20.0
+          displayName: 'Push MSSQL Docker Image to ACR'
+        - script: |
+            docker tag ctsshop/service-registry-1.0.jar:v1.0 $(acrRegistry)/ctsshop/service-registry-1.0.jar:v1.0
+            docker push $(acrRegistry)/ctsshop/service-registry-1.0.jar:v1.0
+          displayName: 'Push SERVICE-REGISTRY Docker Image to ACR'
+        - script: |
+            docker tag ctsshop/catalogue-service-1.0.jar:v1.0 $(acrRegistry)/ctsshop/catalogue-service-1.0.jar:v1.0
+            docker push $(acrRegistry)/ctsshop/catalogue-service-1.0.jar:v1.0
+          displayName: 'Push CATALOGUE-SERVICE Docker Image to ACR'
+        - script: |
+            docker tag ctsshop/customer-service-1.0.jar:v1.0 $(acrRegistry)/ctsshop/customer-service-1.0.jar:v1.0
+            docker push $(acrRegistry)/ctsshop/customer-service-1.0.jar:v1.0
+          displayName: 'Push CUSTOMER-SERVICE Docker Image to ACR'
+        - script: |
+            docker tag ctsshop/image-service-1.0.jar:v1.0 $(acrRegistry)/ctsshop/image-service-1.0.jar:v1.0
+            docker push $(acrRegistry)/ctsshop/image-service-1.0.jar:v1.0
+          displayName: 'Push IMAGE-SERVICE Docker Image to ACR'
+        - script: |
+            docker tag ctsshop/payment-service-1.0.jar:v1.0 $(acrRegistry)/ctsshop/payment-service-1.0.jar:v1.0
+            docker push $(acrRegistry)/ctsshop/payment-service-1.0.jar:v1.0
+          displayName: 'Push PAYMENT-SERVICE Docker Image to ACR'
+      dependsOn: PREBUILD_QA
+      condition: succeeded()       
+- stage: FUNCTIONAL_ASSURANCE_BUILD
+  displayName: FUNCTIONAL TEST BUILD AND PUSH IMAGE
+  dependsOn: []
   condition: succeeded()
   jobs:
-    - job: DEPLOYMENT
+    - job: Build
+      displayName: Build and Push
       pool:
         vmImage: 'ubuntu-latest'
-        variables:
-          backendPublicIP: $(publicIP)
-          privateIP: $(publicIP)
-          region: $(regionprimary)
-          bucket: $(bucketurl)
       steps:
-      - checkout: none
-      - task: SSH@0
-        displayName: 'Deployment to Virtual Machine'        
-        inputs:
-          sshEndpoint: MY_VM_SSH_CONNECTION
-          runOptions: 'commands'
-          commands: 'sudo chmod 666 /var/run/docker.sock;docker login $(acrRegistry) --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken) 2> /dev/null;( docker stop digitalshopifyfrontend > /dev/null ) 2>/dev/null || true; docker run --name digitalshopifyfrontend -p 3000:3000 -p 8180:8180 --rm -i -t -d $(acrRegistry)/digitalshopify:latest 2> /dev/null;docker exec -d -e REACT_APP_API=$(publicIP) digitalshopifyfrontend npm start'
-          failOnStdErr: true
-      
-    - job: SMOKE_TEST
-      pool:
-        vmImage: 'ubuntu-latest'
-        variables:
-          backendPublicIP: $(publicIP)
-          privateIP: $(publicIP)
-          region: $(regionprimary)
-          bucket: $(bucketurl)
-      steps:
-      - checkout: FunctionalRepo
-      - script: |
-          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucketurl)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/azure_dashboard_report/secrets/update || true  
-          export backendPrivateIP=$(publicIP)
-          export publicIP=$(publicIP)
-          mvn clean test -Dcucumber.options="--tags @Smoke" -DExecutionPlatform="AZURE_CHROME"
-        displayName: 'Smoke Test'
-      - script: |
-          mv "target/extent-reports/Digital_Shopify_E-Shop.html" "target/extent-reports/Digital_Shopify_SMOKE_E-Shop.html"
-          az storage blob upload-batch --destination '$web' --account-name "$(blobAccount)" --source "target/extent-reports" --sas-token "$(sasTokenBlob)" --connection-string "$(connectionStringBlob)"
-        displayName: 'Publish Reports To Blob'
-        condition: always()
-      dependsOn: DEPLOYMENT
-      condition: succeeded()
-- stage: FUNCTIONAL_ASSURANCE
-  displayName: FUNCTIONAL ASSURANCE
-  dependsOn:
-   - POST_BUILD
-  condition: succeeded()
-  jobs:
-    - job: API_TEST
-      displayName: API TEST
-      pool:
-        vmImage: 'ubuntu-latest'
-        variables:
-          backendPublicIP: $(publicIP)
-          privateIP: $(publicIP)
-          region: $(regionprimary)
-          bucket: $(bucketurl)
-      steps:
-      - checkout: FunctionalRepo
-      - script: |
-          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucketurl)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/azure_dashboard_report/secrets/update || true  
-          export backendPrivateIP=$(publicIP)
-          export publicIP=$(publicIP)
-          mvn clean test -Dcucumber.options="--tags @APITest" -DExecutionPlatform="AZURE_CHROME"
-        displayName: 'Rest Assured API Test'
-      - script: |
-          mv "target/extent-reports/Digital_Shopify_E-Shop.html" "target/extent-reports/Digital_Shopify_API_E-Shop.html"
-          az storage blob upload-batch --destination '$web' --account-name "$(blobAccount)" --source "target/extent-reports" --sas-token "$(sasTokenBlob)" --connection-string "$(connectionStringBlob)"
-        displayName: 'Publish Reports To Blob'
-        condition: always()
-      dependsOn: []
-    - job: UI_TEST
-      displayName: UI TEST
-      pool:
-        vmImage: 'ubuntu-latest'
-        variables:
-          backendPublicIP: $(publicIP)
-          privateIP: $(publicIP)
-          region: $(regionprimary)
-          bucket: $(bucketurl)
-      steps:
-      - checkout: FunctionalRepo
-      - script: |
-          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucketurl)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/azure_dashboard_report/secrets/update || true  
-          export backendPrivateIP=$(publicIP)
-          export publicIP=$(publicIP)
-          mvn clean test -Dcucumber.options="--tags @UITest" -DExecutionPlatform="AZURE_CHROME"
-        displayName: 'Selenium UI Test'
-      - script: |
-          mv "target/extent-reports/Digital_Shopify_E-Shop.html" "target/extent-reports/Digital_Shopify_UI_E-Shop.html"
-          az storage blob upload-batch --destination '$web' --account-name "$(blobAccount)" --source "target/extent-reports" --sas-token "$(sasTokenBlob)" --connection-string "$(connectionStringBlob)"
-        displayName: 'Publish Reports To Blob'
-        condition: always()
-      dependsOn: []
-    - job: RWD_TEST
-      displayName: RWD TEST
-      pool:
-        vmImage: 'ubuntu-latest'
-        variables:
-          backendPublicIP: $(publicIP)
-          privateIP: $(publicIP)
-          region: $(regionprimary)
-          bucket: $(bucketurl)
-      steps:
-      - checkout: FunctionalRepo
-      - script: |
-          curl -s --connect-timeout 8 -d "{\"privateIP\":\"$(publicIP)\",\"publicIP\":\"$(publicIP)\",\"region\":\"$(region)\",\"bucket\":\"$(bucketurl)\"}"   -H 'Content-Type:application/json' http://$(publicIP):3337/api/v1/azure_dashboard_report/secrets/update || true  
-          export backendPrivateIP=$(publicIP)
-          export publicIP=$(publicIP)
-          mvn clean test -Dcucumber.options="--tags @UIRWDTest" -DExecutionPlatform="AZURE_CHROME"
-        displayName: 'Selenium RWD Test'
-      - script: |
-          mv "target/extent-reports/Digital_Shopify_E-Shop.html" "target/extent-reports/Digital_Shopify_RWD_E-Shop.html"
-          az storage blob upload-batch --destination '$web' --account-name "$(blobAccount)" --source "target/extent-reports" --sas-token "$(sasTokenBlob)" --connection-string "$(connectionStringBlob)"
-        displayName: 'Publish Reports To Blob'
-        condition: always()
-      dependsOn: []
-- stage: EXPERIENCE_ASSURANCE
-  displayName: EXPERIENCE ASSURANCE
-  dependsOn:
-   - FUNCTIONAL_ASSURANCE
-  condition: always()
-  jobs:
-    - job: PERFORMANCE_TEST
-      displayName: PERFORMANCE TEST
-      pool:
-        vmImage: 'ubuntu-latest'
-        variables:
-          backendPublicIP: $(publicIP)
-          privateIP: $(publicIP)
-          region: $(regionprimary)
-          bucket: $(bucketurl)
-      steps:
-      - checkout: PerformanceRepo
-      - script: |
-          sudo chmod a+rwx $PWD
-          docker pull egaillardon/jmeter:5.1.1-2.0.0
-          pip3 install pandas
-          pip3 install requests
-        displayName: 'Pulling Docker Images'
-      - script: |
-          docker run -e HEAP='-Xms4g -Xmx4g' --volume `pwd`:/jmeter egaillardon/jmeter:5.1.1-2.0.0 --nongui --testfile AZUREWrksp_NFTPerformance_Scenario.jmx -Jhost=$(publicIP) -Jport=3000 -Japihost=$(publicIP) -Japiport=8180 --logfile testoutput.jtl
-          docker run --volume `pwd`:/jmeter egaillardon/jmeter:5.1.1-2.0.0 --reportonly summary_report.csv --reportoutputfolder /jmeter/htmlreports
-          cat summary_report.csv
-          python3 performance_result_process.py http://$(publicIP):3337/api/v1/azure_dashboard_report/moudule/update
-        displayName: 'Execute Performance Tests'
-      - script: |
-            mv "htmlreports/index.html" "htmlreports/PERFORMANCE.html"
-            az storage blob upload-batch --destination '$web' --account-name "$(blobAccount)" --source "htmlreports" --sas-token "$(sasTokenBlob)" --connection-string "$(connectionStringBlob)"
-        displayName: 'Publish Reports To Blob'
-        condition: always()
-      dependsOn: []
-
-    - job: ACCESSIBILITY_TEST
-      displayName: ACCESSIBILITY TEST
-      pool:
-        vmImage: 'ubuntu-latest'
-        variables:
-          backendPublicIP: $(publicIP)
-          privateIP: $(publicIP)
-          region: $(regionprimary)
-          bucket: $(bucketurl)
-      steps:
-      - checkout: AccessibilityRepo
-      - script: |
-          export frontendIP=$(publicIP)
-          export dashboardIP=$(publicIP)
-          mvn clean test
-          cd target
-          ls
-        displayName: 'Execute Accessibility Tests'
-      - script: |
-            mv "target/Report.html" "target/ACCESSIBILITY.html"
-            az storage blob upload-batch --destination '$web' --account-name "$(blobAccount)" --source "target" --sas-token "$(sasTokenBlob)" --connection-string "$(connectionStringBlob)"
-        displayName: 'Publish Reports To Blob'
-        condition: succeeded()
-      dependsOn: PERFORMANCE_TEST
+       - checkout: FunctionalRepo
+         persistCredentials: true
+       - task: CmdLine@2
+         displayName: 'Build and Push Image'
+         inputs:
+            script: |
+              docker build -t testdigitalshopify:latest .
+              docker login $(acrRegistry) --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken)
+              docker tag testdigitalshopify $(acrRegistry)/testdigitalshopify
+              docker push $(acrRegistry)/testdigitalshopify
+           
+       - task: CopyFiles@2
+         inputs:
+           Contents: 'docker-compose.yml'
+           TargetFolder: '$(Build.ArtifactStagingDirectory)'
+           
+       - task: PublishBuildArtifacts@1
+         inputs:
+           PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+           ArtifactName: 'drop'
+           publishLocation: 'Container'
