@@ -28,6 +28,10 @@ let url = argv.url || app.site_url;
 let country = argv.location || app.location;
 let locale = argv.locale || app.locales;
 let test = argv.test
+let deploymentType = argv.deploymentType
+if(deploymentType=='EndToEnd'){
+  process.env.lastnameID = '#lastName';
+}
 let testEndsWith = 'test.js';
 let covFlag=true;
 if(test=='ui'){
