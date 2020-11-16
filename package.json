@@ -63,6 +63,7 @@
     "start": "react-scripts start",
     "mock": "node_modules/.bin/nodemon --harmony -e js",
     "build": "react-scripts build",
+    "etest": "jest --deploymentType=EndToEnd --coverage --verbose",
     "test": "jest --coverage --verbose",
     "eject": "react-scripts eject",
     "scan": "node sonar-scan.js",
