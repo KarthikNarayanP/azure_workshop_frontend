@@ -17,7 +17,7 @@ async function scan() {
 
   try{
     const response = await request
-        .get(`http://${server}:9000/projects`)
+        .get(`http://${server}:6002/projects`)
         .timeout({
             response: 120000,  // Wait 5 seconds for the server to start sending,
             deadline: 4000, // but allow 1 minute for the file to finish loading.
@@ -33,7 +33,7 @@ async function scan() {
 
   sonarqubeScanner(
     {
-      serverUrl : 'http://'+server+':9000',
+      serverUrl : 'http://'+server+':6002',
       options: {
         'sonar.projectName': 'azurewrkshp-aut-frontend',
         'sonar.projectDescription': 'Mythical Mysfits'
