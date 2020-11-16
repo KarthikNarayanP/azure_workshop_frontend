@@ -1,5 +1,5 @@
 {
-  "name": "mm-shop-ui",
+  "name": "digital-shopify-ui",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -68,7 +68,7 @@
     "eject": "react-scripts eject",
     "scan": "node sonar-scan.js",
     "bvt": "jest --test=ui",
-    "cli": "start-server-and-test start http://localhost:3000 mock http://localhost:8180/api/catalogue-rest/product/15 test",
+    "cli": "start-server-and-test start http://localhost:3000 mock http://localhost:8180/api/catalogue-rest/product/15 bvt",
     "start_dev_win": "set \"REACT_APP_API=backendApi\" && npm start",
     "start_dev_linux_mac": "REACT_APP_API=backendApi && npm start"
   },
