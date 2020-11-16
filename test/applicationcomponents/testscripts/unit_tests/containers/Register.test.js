@@ -51,8 +51,9 @@ describe('Register test', () => {
     });
 
     it("Register - Last name should be present", async () => {
+        const lastnameID = process.env.lastnameID || '#lastName1';
         const wrapper = shallow(<Register history={history}/>);
-        const lastname = wrapper.find('#lastName1')
+        const lastname = wrapper.find(lastnameID)
         expect(lastname.exists()).toBe(true);
     });
 
