@@ -8,6 +8,10 @@ resources:
    endpoint: AZUREMYSERVICECONNECTION
    type: git
    name: azure_workshop_backend
+ - repository: FunctionalRepo
+   endpoint: AZUREMYSERVICECONNECTION
+   type: git
+   name: azure_workshop_functional_assurance
 stages:
 - stage: BUILD_PIPELINE_FRONTEND
   displayName: BUILD PIPELINE FRONTEND
