@@ -108,6 +108,8 @@ stages:
           ( kubectl create secret docker-registry mykubetokenacr --docker-server=$(acrRegistry) --docker-username=00000000-0000-0000-0000-000000000000 --docker-password=$(azureACRToken) ) 2>/dev/null || true
           ( kubectl delete pod/backend pod/frontend ) 2>/dev/null || true
           ( kubectl delete service/frontend service/frontend-pod-loadbalancer service/backend-pod-loadbalancer ) 2>/dev/null || true
+          ( kubectl delete service/service-registry service/catalogue-service service/customer-service service/image-service service/payment-service service/frontendtestapp service/frontendtestapp-pod-loadbalancer ) 2>/dev/null || true
+          ( kubectl delete pod/service-registry pod/catalogue-service pod/customer-service pod/image-service pod/payment-service pod/frontendtestapp ) 2>/dev/null || true
           kubectl run backend --image=$(acrRegistry)/digitalshopify --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacr"}] } }' --port=8180
           kubectl expose pod backend --port=8180 --target-port=8180 --name=backend-pod-loadbalancer --type=LoadBalancer
           bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc backend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
