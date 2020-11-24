@@ -215,6 +215,19 @@ stages:
             docker tag ctsshop/payment-service-1.0.jar:v1.0 $(acrRegistry)/ctsshop/payment-service-1.0.jar:v1.0
             docker push $(acrRegistry)/ctsshop/payment-service-1.0.jar:v1.0
           displayName: 'Push PAYMENT-SERVICE Docker Image to ACR'
+        - script: |
+            body="[{\"op\":\"test\",\"path\":\"\/rev\",\"value\":1},{\"op\":\"add\",\"path\":\"\/fields\/System.State\",\"value\":\"Done\"}]"
+            IFS=',' read -ra devIDs <<< "$(devIDs)"
+            for devID in "${devIDs[@]}"; do
+              url="https://dev.azure.com/$(organization)/$(project)/_apis/wit/workitems/$devID?api-version=6.0"
+              az rest --method patch --headers Authorization="Basic "$(b64pat) Content-Type=application/json-patch+json --url $url --body $body
+            done
+            IFS=',' read -ra devOpsIDs <<< "$(devOpsIDs)"
+            for devOpsID in "${devOpsIDs[@]}"; do
+              url="https://dev.azure.com/$(organization)/$(project)/_apis/wit/workitems/$devOpsID?api-version=6.0"
+              az rest --method patch --headers Authorization="Basic "$(b64pat) Content-Type=application/json-patch+json --url $url --body $body
+            done
+          displayName: 'Update WorkItems'
       dependsOn: PREBUILD_QA
       condition: succeeded()       
 # - stage: DEPLOYMENT
