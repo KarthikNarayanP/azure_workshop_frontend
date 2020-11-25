@@ -192,10 +192,6 @@ stages:
           displayName: 'Build Docker Image'
         - script: |
             docker login $(acrRegistry) --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken)
-            docker tag mcmoe/mssqldocker:v2017.CU20.0 $(acrRegistry)/mcmoe/mssqldocker:v2017.CU20.0
-            docker push $(acrRegistry)/mcmoe/mssqldocker:v2017.CU20.0
-          displayName: 'Push MSSQL Docker Image to ACR'
-        - script: |
             docker tag ctsshop/service-registry-1.0.jar:v1.0 $(acrRegistry)/ctsshop/service-registry-1.0.jar:v1.0
             docker push $(acrRegistry)/ctsshop/service-registry-1.0.jar:v1.0
           displayName: 'Push SERVICE-REGISTRY Docker Image to ACR'
