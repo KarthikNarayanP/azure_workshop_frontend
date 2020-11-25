@@ -33,9 +33,7 @@
     "react-star-ratings": "^2.3.0",
     "react-swipeable-views": "^0.13.3",
     "react-test-renderer": "16.13.1",
-    "store": "^2.0.12"
-  },
-  "devDependencies": {
+    "store": "^2.0.12",
     "enzyme": "^3.11.0",
     "enzyme-adapter-react-16": "1.15.2",
     "eslint-plugin-sonarjs": "0.5.0",
@@ -55,8 +53,10 @@
     "start-server-and-test": "^1.11.0",
     "superagent": "5.3.1",
     "xml2js": "0.4.23",
-    "playwright": "^1.1.1",
     "faker": "^4.1.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.1.1"
   },
   "main": "index.js",
   "scripts": {
