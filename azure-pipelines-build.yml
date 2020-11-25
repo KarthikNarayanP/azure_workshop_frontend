@@ -212,17 +212,21 @@ stages:
             docker push $(acrRegistry)/ctsshop/payment-service-1.0.jar:v1.0
           displayName: 'Push PAYMENT-SERVICE Docker Image to ACR'
         - script: |
-            rev=`echo $(Build.BuildNumber) | cut -d "." -f 2`
-            body="[{\"op\":\"test\",\"path\":\"\/rev\",\"value\":$rev},{\"op\":\"add\",\"path\":\"\/fields\/System.State\",\"value\":\"Done\"}]"
+            #rev=`echo $(Build.BuildNumber) | cut -d "." -f 2`
+            body="[{\"op\":\"test\",\"path\":\"\/rev\",\"value\":1},{\"op\":\"add\",\"path\":\"\/fields\/System.State\",\"value\":\"Done\"}]"
             IFS=',' read -ra devIDs <<< "$(devIDs)"
             for devID in "${devIDs[@]}"; do
-              url="https://dev.azure.com/$(organization)/$(project)/_apis/wit/workitems/$devID?api-version=6.0"
-              az rest --method patch --headers Authorization="Basic "$(b64pat) Content-Type=application/json-patch+json --url $url --body $body
+              if [[ $(az rest --method get --headers Authorization="Basic "$(b64pat) --url https://dev.azure.com/$(organization)/$(project)/_apis/wit/workitems/$devID?api-version=6.0 | jq '.fields."System.State"' | tr -d '"') = "To Do" ]];then
+                url="https://dev.azure.com/$(organization)/$(project)/_apis/wit/workitems/$devID?api-version=6.0"
+                az rest --method patch --headers Authorization="Basic "$(b64pat) Content-Type=application/json-patch+json --url $url --body $body
+              fi  
             done
             IFS=',' read -ra devOpsIDs <<< "$(devOpsIDs)"
             for devOpsID in "${devOpsIDs[@]}"; do
-              url="https://dev.azure.com/$(organization)/$(project)/_apis/wit/workitems/$devOpsID?api-version=6.0"
-              az rest --method patch --headers Authorization="Basic "$(b64pat) Content-Type=application/json-patch+json --url $url --body $body
+              if [[ $(az rest --method get --headers Authorization="Basic "$(b64pat) --url https://dev.azure.com/$(organization)/$(project)/_apis/wit/workitems/$devOpsID?api-version=6.0 | jq '.fields."System.State"' | tr -d '"') = "To Do" ]];then
+                url="https://dev.azure.com/$(organization)/$(project)/_apis/wit/workitems/$devOpsID?api-version=6.0"
+                az rest --method patch --headers Authorization="Basic "$(b64pat) Content-Type=application/json-patch+json --url $url --body $body
+              fi  
             done
           displayName: 'Update WorkItems'
       dependsOn: PREBUILD_QA
