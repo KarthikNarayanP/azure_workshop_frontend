@@ -34,26 +34,22 @@ stages:
           versionSpec: '12.x'
       - script: |
           echo "Environmental Value $(backendPublicIP)"
-          npm install
+          npm install --production
         displayName: 'Install Dependencies'
         
       - script: |
           export dashboardIP=$(dashboardIP)
           export backendIP=$(sonarIP)
-          npm run scan
-        displayName: 'Static Code Analysis'
+          npm test
+        displayName: 'Unit Test and Code Coverage'
+        continueOnError: false
 
       - script: |
           export dashboardIP=$(dashboardIP)
           export backendIP=$(sonarIP)
-          npm test
-        displayName: 'Unit Test'
-        continueOnError: false
-      - script: |
-          export dashboardIP=$(dashboardIP)
-          export backendIP=$(sonarIP)
           npm run scan
-        displayName: 'Code Coverage'
+        displayName: 'Static Code Analysis'
+        
       - task: PublishTestResults@2
         condition: succeededOrFailed()
         inputs:
