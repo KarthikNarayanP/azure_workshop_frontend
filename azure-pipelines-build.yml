@@ -40,16 +40,21 @@ stages:
       - script: |
           export dashboardIP=$(dashboardIP)
           export backendIP=$(sonarIP)
-          npm test
-        displayName: 'Unit Test and Code Coverage'
-        continueOnError: false
+          npm run scan
+        displayName: 'Static Code Analysis'
 
       - script: |
           export dashboardIP=$(dashboardIP)
           export backendIP=$(sonarIP)
+          npm test
+        displayName: 'Unit Test'
+        continueOnError: false
+      - script: |
+          export dashboardIP=$(dashboardIP)
+          export backendIP=$(sonarIP)
           npm run scan
-        displayName: 'Static Code Analysis'
-        
+        displayName: 'Code Coverage'
+
       - task: PublishTestResults@2
         condition: succeededOrFailed()
         inputs:
