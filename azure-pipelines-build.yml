@@ -9,11 +9,11 @@ resources:
    type: git
    name: azure_workshop_backend
 stages:
-- stage: BUILD_PIPELINE_FRONTEND
-  displayName: BUILD PIPELINE FRONTEND
+- stage: PREBUILD_QA_FRONTEND
+  displayName: PREBUILD QA FRONTEND
   jobs:
   - job: PREBUILD_QA
-    displayName: DEVELOPER QUALITY GATE
+    displayName: STATIC CODE ANALYSIS, UNITTEST & CODE COVERAGE
     continueOnError: false
     pool:
         vmImage: 'ubuntu-latest'
@@ -66,8 +66,12 @@ stages:
           codeCoverageTool: Cobertura
           summaryFileLocation: '$(System.DefaultWorkingDirectory)/test/results/coverage/clover.xml'
           reportDirectory: '$(System.DefaultWorkingDirectory)/test/results/coverage'
-      
-  - job: BUILD
+          
+- stage: BUILD_AND_PUSH_FRONTEND
+  displayName: BUILD AND PUSH TO ACR
+  dependsOn: PREBUILD_QA_FRONTEND
+  jobs:
+  - job: BUILD_PUSH
     displayName: BUILD AND PUSH TO ACR
     pool:
         vmImage: 'ubuntu-latest'
@@ -81,43 +85,47 @@ stages:
           docker tag digitalshopify $(acrRegistry)/digitalshopify
           docker push $(acrRegistry)/digitalshopify
         displayName: 'Push Docker Image to ACR'
-    dependsOn: PREBUILD_QA
-    condition: succeeded()
 
-    # download the artifact and deploy it only if the build job succeeded
-  - job: DEPLOY_WITH_VIRTUAL_SERVICES_TO_AKS
-    displayName: DEPLOY WITH VIRTUAL SERVICES TO AKS
-    pool:
+- stage: DEPLOY_WITH_VIRTUAL_SERVICES_TO_AKS
+  displayName: DEPLOY WITH VIRTUAL SERVICES TO AKS
+  dependsOn: BUILD_AND_PUSH_FRONTEND
+  jobs:
+   - job: DEPLOY_WITH_VIRTUAL_SERVICES_TO_AKS
+     displayName: DEPLOY WITH VIRTUAL SERVICES TO AKS
+     pool:
         vmImage: 'ubuntu-latest'
-    steps:
-    - checkout: none
-    - task: Kubernetes@1
-      inputs:
-        connectionType: Kubernetes Service Connection
-        kubernetesServiceEndpoint: MYAKSCONNECTION
-        command: login
-      displayName: 'Login to AKS'
-    - task: Bash@3
-      displayName: 'Deployment'        
-      inputs:
-        targetType: 'inline'
-        script: |
-          ( kubectl create secret docker-registry mykubetokenacr --docker-server=$(acrRegistry) --docker-username=00000000-0000-0000-0000-000000000000 --docker-password=$(azureACRToken) ) 2>/dev/null || true
-          ( kubectl delete service/frontend service/frontend-pod-loadbalancer service/backend-pod-loadbalancer ) 2>/dev/null || true
-          ( kubectl delete pod/backend pod/frontend ) 2>/dev/null || true
-          kubectl run backend --image=$(acrRegistry)/digitalshopify --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacr"}] } }' --port=8180
-          kubectl expose pod backend --port=8180 --target-port=8180 --name=backend-pod-loadbalancer --type=LoadBalancer
-          bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc backend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
-          externalip=$(kubectl get services/backend-pod-loadbalancer -o json | jq '.status.loadBalancer.ingress[0].ip' | tr -d '"')
-          echo $externalip
-          kubectl run frontend --image=$(acrRegistry)/digitalshopify --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacr"}] } }' --port=3000 --expose=true --env="REACT_APP_API=$externalip" -- npm start
-          kubectl expose pod frontend --port=3000 --target-port=3000 --name=frontend-pod-loadbalancer --type=LoadBalancer
-          bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc frontend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
-          externalipfront=$(kubectl get services/frontend-pod-loadbalancer -o json | jq '.status.loadBalancer.ingress[0].ip' | tr -d '"')
-          curl -s --connect-timeout 8 -d "{\"frontendDevIP\":\"$externalipfront\"}"   -H 'Content-Type:application/json' http://$(dashboardIP):3337/api/v1/azure_dashboard_report/secrets/updateprebuildinfra || true
-          curl -s --connect-timeout 8 -d "{\"moduleName\":\"prebuild\",\"status\":\"Completed\"}"   -H 'Content-Type:application/json' http://$(dashboardIP):3337/api/v1/azure_dashboard_report/moudule/updatebuildcompletion || true
-    dependsOn: BUILD
-    condition: succeeded()
+     steps:
+      - checkout: none
+      - task: Kubernetes@1
+        inputs:
+          connectionType: Kubernetes Service Connection
+          kubernetesServiceEndpoint: MYAKSCONNECTION
+          command: login
+        displayName: 'Login to AKS'
+      - task: Bash@3
+        displayName: 'Deployment'        
+        inputs:
+          targetType: 'inline'
+          script: |
+            ( kubectl create secret docker-registry mykubetokenacr --docker-server=$(acrRegistry) --docker-username=00000000-0000-0000-0000-000000000000 --docker-password=$(azureACRToken) ) 2>/dev/null || true
+            ( kubectl delete service/frontend service/frontend-pod-loadbalancer service/backend-pod-loadbalancer ) 2>/dev/null || true
+            ( kubectl delete pod/backend pod/frontend ) 2>/dev/null || true
+            kubectl run backend --image=$(acrRegistry)/digitalshopify --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacr"}] } }' --port=8180
+            kubectl expose pod backend --port=8180 --target-port=8180 --name=backend-pod-loadbalancer --type=LoadBalancer
+            bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc backend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
+            externalip=$(kubectl get services/backend-pod-loadbalancer -o json | jq '.status.loadBalancer.ingress[0].ip' | tr -d '"')
+            echo $externalip
+            kubectl run frontend --image=$(acrRegistry)/digitalshopify --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacr"}] } }' --port=3000 --expose=true --env="REACT_APP_API=$externalip" -- npm start
+            kubectl expose pod frontend --port=3000 --target-port=3000 --name=frontend-pod-loadbalancer --type=LoadBalancer
+            bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc frontend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
+            externalipfront=$(kubectl get services/frontend-pod-loadbalancer -o json | jq '.status.loadBalancer.ingress[0].ip' | tr -d '"')
+            curl -s --connect-timeout 8 -d "{\"frontendDevIP\":\"$externalipfront\"}"   -H 'Content-Type:application/json' http://$(dashboardIP):3337/api/v1/azure_dashboard_report/secrets/updateprebuildinfra || true
+            curl -s --connect-timeout 8 -d "{\"moduleName\":\"prebuild\",\"status\":\"Completed\"}"   -H 'Content-Type:application/json' http://$(dashboardIP):3337/api/v1/azure_dashboard_report/moudule/updatebuildcompletion || true
+
+- stage: BVT_SYSTEM_TESTS
+  displayName: BUILD VERIFICATION TESTS
+  dependsOn: DEPLOY_WITH_VIRTUAL_SERVICES_TO_AKS
+  jobs:
   - job: BVT_SYSTEM_TESTS
     displayName: BVT - UI TESTS
     pool:
@@ -149,14 +157,13 @@ stages:
           bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc frontend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
           externalip=$(kubectl get services/frontend-pod-loadbalancer -o json | jq '.status.loadBalancer.ingress[0].ip' | tr -d '"')
           npm run bvt -- --url=http://$externalip:3000
-    dependsOn: DEPLOY_WITH_VIRTUAL_SERVICES_TO_AKS
-    condition: succeeded()
-- stage: BUILD_PIPELINE_BACKEND
-  displayName: BUILD PIPELINE BACKEND
+
+- stage: PREBUILD_QA_BACKEND
+  displayName: PREBUILD QA BACKEND
   dependsOn: []
   jobs:
     - job: PREBUILD_QA
-      displayName: DEVELOPER QUALITY GATE
+      displayName: STATIC CODE ANALYSIS, UNITTEST & CODE COVERAGE
       pool:
         vmImage: 'ubuntu-latest'
       variables:
@@ -189,6 +196,11 @@ stages:
             codeCoverageTool: JaCoCo
             summaryFileLocation: 'build/reports/jacoco/codeCoverageReport/codeCoverageReport.xml'
             reportDirectory: 'build/reports/jacoco/codeCoverageReport/html'
+            
+- stage: BUILD_AND_PUSH_BACKEND
+  displayName: BUILD AND PUSH TO ACR
+  dependsOn: PREBUILD_QA_BACKEND
+  jobs:
     - job: BUILD
       displayName: BUILD AND PUSH TO ACR
       pool:
@@ -240,50 +252,3 @@ stages:
               fi  
             done
           displayName: 'Update WorkItems'
-      dependsOn: PREBUILD_QA
-      condition: succeeded()       
-# - stage: DEPLOYMENT
-#   displayName: DEPLOYMENT TO AKS
-#   dependsOn:
-#    - BUILD_PIPELINE_FRONTEND
-#    - BUILD_PIPELINE_BACKEND
-#   condition: succeeded()
-#   jobs:
-#     - job: DEPLOYMENT
-#       pool:
-#         vmImage: 'ubuntu-latest'
-#         variables:
-#           backendPublicIP: $(publicIP)
-#           privateIP: $(publicIP)
-#           region: $(regionprimary)
-#           bucket: $(bucketurl)
-#       steps:
-#       - checkout: FrontendRepo
-#       - task: Kubernetes@1
-#         inputs:
-#           connectionType: Kubernetes Service Connection
-#           kubernetesServiceEndpoint: MYAKSCONNECTION
-#           command: login
-#         displayName: 'Login to AKS'
-#       - task: Bash@3
-#         displayName: 'Deployment'        
-#         inputs:
-#           targetType: 'inline'
-#           script: |
-#             kubectl create secret docker-registry mykubetokenacrs --docker-server=$(acrRegistry) --docker-username=00000000-0000-0000-0000-000000000000 --docker-password=$(azureACRToken)
-#             kubectl run service-registry --image=$(acrRegistry)/ctsshop/service-registry-1.0.jar:v1.0 --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacrs"}] } }' --port=8180
-#             kubectl expose pod service-registry --port=8180 --target-port=8180 --name=service-registry --type=LoadBalancer
-#             bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc service-registry --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
-#             kubectl run catalogue-service --image=$(acrRegistry)/ctsshop/catalogue-service-1.0.jar:v1.0 --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacrs"}] } }' --port=8181
-#             kubectl expose pod catalogue-service --port=8181 --target-port=8181 --name=catalogue-service --type=LoadBalancer
-#             kubectl run customer-service --image=$(acrRegistry)/ctsshop/customer-service-1.0.jar:v1.0 --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacrs"}] } }' --port=8182
-#             kubectl expose pod customer-service --port=8182 --target-port=8182 --name=customer-service --type=LoadBalancer
-#             kubectl run image-service --image=$(acrRegistry)/ctsshop/image-service-1.0.jar:v1.0 --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacrs"}] } }' --port=8183
-#             kubectl run payment-service --image=$(acrRegistry)/ctsshop/payment-service-1.0.jar:v1.0 --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacrs"}] } }' --port=8184
-#             externalip=$(kubectl get services/service-registry -o json | jq '.status.loadBalancer.ingress[0].ip' | tr -d '"')
-#             echo $externalip
-#             kubectl run frontendtestapp --image=$(acrRegistry)/digitalshopify --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacrs"}] } }' --port=3000 --expose=true --env="REACT_APP_API=$externalip" -- npm start
-#             kubectl expose pod frontendtestapp --port=3000 --target-port=3000 --name=frontendtestapp-pod-loadbalancer --type=LoadBalancer
-#             bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc frontendtestapp-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
-#             kubectl expose pod image-service --port=8183 --target-port=8183 --name=image-service --type=LoadBalancer
-#             kubectl expose pod payment-service --port=8184 --target-port=8184 --name=payment-service --type=LoadBalancer
