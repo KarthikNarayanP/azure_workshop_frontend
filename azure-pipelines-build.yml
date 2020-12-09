@@ -121,7 +121,8 @@ stages:
             externalipfront=$(kubectl get services/frontend-pod-loadbalancer -o json | jq '.status.loadBalancer.ingress[0].ip' | tr -d '"')
             curl -s --connect-timeout 8 -d "{\"frontendDevIP\":\"$externalipfront\"}"   -H 'Content-Type:application/json' http://$(dashboardIP):3337/api/v1/azure_dashboard_report/secrets/updateprebuildinfra || true
             curl -s --connect-timeout 8 -d "{\"moduleName\":\"prebuild\",\"status\":\"Completed\"}"   -H 'Content-Type:application/json' http://$(dashboardIP):3337/api/v1/azure_dashboard_report/moudule/updatebuildcompletion || true
-
+            wigetEtag = $(curl -X GET -s --connect-timeout 8 -H 'Content-Type:application/json' -H 'Authorization: Basic $(b64pat)' https://dev.azure.com/$(organization)/$(project)/$(project)%20Team/_apis/dashboard/dashboards/$(dashboardLabOverviewID)/widgets?api-version=6.0-preview.2 | jq '.widgets[3].eTag' | tr -d '"')
+            curl -X PATCH -s --connect-timeout 8 -d "{\"eTag\":\"$wigetEtag\",\"name\":\"Markdown\",\"position\":{\"row\":1,\"column\":3},\"size\":{\"rowSpan\":1,\"columnSpan\":2},\"settings\":\"----\n### Deployment in PreBuild\nApplication deployed in PreBuild can be viewed here\n\n----\n###### Application deployed with Virtual \/ Mock Services\n> - [Digitalshopify](http://$externalipfront:3000)\",\"settingsVersion\":{\"major\":1,\"minor\":0,\"patch\":0},\"dashboard\":{\"eTag\":\"$(dashboardLabOverviewETAG)\"},\"contributionId\":\"ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget\",\"lightboxOptions\":{\"width\":600,\"height\":500,\"resizable\":true}}" -H 'Content-Type:application/json' -H 'Authorization: Basic $(b64pat)' https://dev.azure.com/$(organization)/$(project)/$(project)%20Team/_apis/dashboard/dashboards/$(dashboardLabOverviewID)/widgets/$(prebuildWidgetID)?api-version=6.0-preview.2
 - stage: BVT_SYSTEM_TESTS
   displayName: BUILD VERIFICATION TESTS
   dependsOn: DEPLOY_WITH_VIRTUAL_SERVICES_TO_AKS
