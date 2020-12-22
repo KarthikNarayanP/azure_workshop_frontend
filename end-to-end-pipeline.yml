@@ -17,7 +17,7 @@ stages:
   displayName: BUILD PIPELINE FRONTEND
   jobs:
   - job: PREBUILD_QA
-    displayName: DEVELOPER QUALITY GATE
+    displayName: STATIC CODE ANALYSIS, UNITTEST & CODE COVERAGE
     continueOnError: false
     pool:
         vmImage: 'ubuntu-latest'
@@ -42,16 +42,19 @@ stages:
         displayName: 'Install Dependencies'
         
       - script: |
+          export dashboardIP=$(dashboardIP)
           export backendIP=$(sonarIP)
           npm run scan
         displayName: 'Static Code Analysis'
 
       - script: |
+          export dashboardIP=$(dashboardIP)
           export backendIP=$(sonarIP)
           npm run etest
         displayName: 'Unit Test'
         continueOnError: false
       - script: |
+          export dashboardIP=$(dashboardIP)
           export backendIP=$(sonarIP)
           npm run scan
         displayName: 'Code Coverage'
@@ -67,7 +70,11 @@ stages:
           summaryFileLocation: '$(System.DefaultWorkingDirectory)/test/results/coverage/clover.xml'
           reportDirectory: '$(System.DefaultWorkingDirectory)/test/results/coverage'
       
-  - job: BUILD
+- stage: BUILD_AND_PUSH_FRONTEND
+  displayName: BUILD AND PUSH TO ACR
+  dependsOn: BUILD_PIPELINE_FRONTEND
+  jobs:
+  - job: BUILD_PUSH
     displayName: BUILD AND PUSH TO ACR
     pool:
         vmImage: 'ubuntu-latest'
@@ -81,43 +88,48 @@ stages:
           docker tag digitalshopify $(acrRegistry)/digitalshopify
           docker push $(acrRegistry)/digitalshopify
         displayName: 'Push Docker Image to ACR'
-    dependsOn: PREBUILD_QA
-    condition: succeeded()
 
-    # download the artifact and deploy it only if the build job succeeded
-  - job: DEPLOY_WITH_VIRTUAL_SERVICES_TO_AKS
-    displayName: DEPLOY WITH VIRTUAL SERVICES TO AKS
-    pool:
+- stage: DEPLOY_WITH_VIRTUAL_SERVICES_TO_AKS
+  displayName: DEPLOY WITH VIRTUAL SERVICES TO AKS
+  dependsOn: BUILD_AND_PUSH_FRONTEND
+  jobs:
+   - job: DEPLOY_WITH_VIRTUAL_SERVICES_TO_AKS
+     displayName: DEPLOY WITH VIRTUAL SERVICES TO AKS
+     pool:
         vmImage: 'ubuntu-latest'
-    steps:
-    - checkout: none
-    - task: Kubernetes@1
-      inputs:
-        connectionType: Kubernetes Service Connection
-        kubernetesServiceEndpoint: MYAKSCONNECTION
-        command: login
-      displayName: 'Login to AKS'
-    - task: Bash@3
-      displayName: 'Deployment'        
-      inputs:
-        targetType: 'inline'
-        script: |
-          ( kubectl create secret docker-registry mykubetokenacr --docker-server=$(acrRegistry) --docker-username=00000000-0000-0000-0000-000000000000 --docker-password=$(azureACRToken) ) 2>/dev/null || true
-          ( kubectl delete pod/backend pod/frontend ) 2>/dev/null || true
-          ( kubectl delete service/frontend service/frontend-pod-loadbalancer service/backend-pod-loadbalancer ) 2>/dev/null || true
-          ( kubectl delete service/service-registry service/catalogue-service service/customer-service service/image-service service/payment-service service/frontendtestapp service/frontendtestapp-pod-loadbalancer ) 2>/dev/null || true
-          ( kubectl delete pod/service-registry pod/catalogue-service pod/customer-service pod/image-service pod/payment-service pod/frontendtestapp ) 2>/dev/null || true
-          kubectl run backend --image=$(acrRegistry)/digitalshopify --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacr"}] } }' --port=8180
-          kubectl expose pod backend --port=8180 --target-port=8180 --name=backend-pod-loadbalancer --type=LoadBalancer
-          bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc backend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
-          externalip=$(kubectl get services/backend-pod-loadbalancer -o json | jq '.status.loadBalancer.ingress[0].ip' | tr -d '"')
-          echo $externalip
-          kubectl run frontend --image=$(acrRegistry)/digitalshopify --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacr"}] } }' --port=3000 --expose=true --env="REACT_APP_API=$externalip" -- npm start
-          kubectl expose pod frontend --port=3000 --target-port=3000 --name=frontend-pod-loadbalancer --type=LoadBalancer
-          bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc frontend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
-          externalipfront=$(kubectl get services/frontend-pod-loadbalancer -o json | jq '.status.loadBalancer.ingress[0].ip' | tr -d '"')
-    dependsOn: BUILD
-    condition: succeeded()
+     steps:
+      - checkout: none
+      - task: Kubernetes@1
+        inputs:
+          connectionType: Kubernetes Service Connection
+          kubernetesServiceEndpoint: MYAKSCONNECTION
+          command: login
+        displayName: 'Login to AKS'
+      - task: Bash@3
+        displayName: 'Deployment'        
+        inputs:
+          targetType: 'inline'
+          script: |
+            ( kubectl create secret docker-registry mykubetokenacr --docker-server=$(acrRegistry) --docker-username=00000000-0000-0000-0000-000000000000 --docker-password=$(azureACRToken) ) 2>/dev/null || true
+            ( kubectl delete service/frontend service/frontend-pod-loadbalancer service/backend-pod-loadbalancer ) 2>/dev/null || true
+            ( kubectl delete pod/backend pod/frontend ) 2>/dev/null || true
+            kubectl run backend --image=$(acrRegistry)/digitalshopify --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacr"}] } }' --port=8180
+            kubectl expose pod backend --port=8180 --target-port=8180 --name=backend-pod-loadbalancer --type=LoadBalancer
+            bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc backend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
+            externalip=$(kubectl get services/backend-pod-loadbalancer -o json | jq '.status.loadBalancer.ingress[0].ip' | tr -d '"')
+            echo $externalip
+            kubectl run frontend --image=$(acrRegistry)/digitalshopify --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacr"}] } }' --port=3000 --expose=true --env="REACT_APP_API=$externalip" -- npm start
+            kubectl expose pod frontend --port=3000 --target-port=3000 --name=frontend-pod-loadbalancer --type=LoadBalancer
+            bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc frontend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
+            externalipfront=$(kubectl get services/frontend-pod-loadbalancer -o json | jq '.status.loadBalancer.ingress[0].ip' | tr -d '"')
+            curl -s --connect-timeout 8 -d "{\"frontendDevIP\":\"$externalipfront\"}"   -H 'Content-Type:application/json' http://$(dashboardIP):3337/api/v1/azure_dashboard_report/secrets/updateprebuildinfra || true
+            curl -s --connect-timeout 8 -d "{\"moduleName\":\"prebuild\",\"status\":\"Completed\"}"   -H 'Content-Type:application/json' http://$(dashboardIP):3337/api/v1/azure_dashboard_report/moudule/updatebuildcompletion || true
+            wigetEtag=$(curl -X GET -s --connect-timeout 8 -H 'Content-Type:application/json' -H 'Authorization: Basic $(b64pat)' https://dev.azure.com/$(organization)/$(project)/$(project)%20Team/_apis/dashboard/dashboards/$(dashboardLabOverviewID)/widgets/$(prebuildWidgetID)?api-version=6.0-preview.2 | jq '.eTag' | tr -d '"')
+            curl -X PATCH -s --connect-timeout 8 -d "{\"eTag\":\"$wigetEtag\",\"name\":\"Markdown\",\"position\":{\"row\":1,\"column\":3},\"size\":{\"rowSpan\":1,\"columnSpan\":2},\"settings\":\"----\n### Deployment in PreBuild\nApplication deployed in PreBuild can be viewed here\n\n----\n###### Application deployed with Virtual \/ Mock Services\n> - [Digitalshopify](http://$externalipfront:3000)\",\"settingsVersion\":{\"major\":1,\"minor\":0,\"patch\":0},\"dashboard\":{\"eTag\":\"$(dashboardLabOverviewETAG)\"},\"contributionId\":\"ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget\",\"lightboxOptions\":{\"width\":600,\"height\":500,\"resizable\":true}}" -H 'Content-Type:application/json' -H 'Authorization: Basic $(b64pat)' https://dev.azure.com/$(organization)/$(project)/$(project)%20Team/_apis/dashboard/dashboards/$(dashboardLabOverviewID)/widgets/$(prebuildWidgetID)?api-version=6.0-preview.2
+- stage: BVT_SYSTEM_TESTS
+  displayName: BUILD VERIFICATION TESTS
+  dependsOn: DEPLOY_WITH_VIRTUAL_SERVICES_TO_AKS
+  jobs:       
   - job: BVT_SYSTEM_TESTS
     displayName: BVT - UI TESTS
     pool:
@@ -135,18 +147,26 @@ stages:
         echo "Environmental Value $(backendPublicIP)"
         npm install
       displayName: 'Install Dependencies'
-  
-    - script: |
-        npm run cli
-      displayName: 'UI System Tests'
-    dependsOn: DEPLOY_WITH_VIRTUAL_SERVICES_TO_AKS
-    condition: succeeded()
+    - task: Kubernetes@1
+      inputs:
+        connectionType: Kubernetes Service Connection
+        kubernetesServiceEndpoint: MYAKSCONNECTION
+        command: login
+      displayName: 'Login to AKS'
+    - task: Bash@3
+      displayName: 'UI System Tests'        
+      inputs:
+        targetType: 'inline'
+        script: |
+          bash -c 'external_ip=""; while [ -z $external_ip ]; do echo "Waiting for end point..."; external_ip=$(kubectl get svc frontend-pod-loadbalancer --template="{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}"); [ -z "$external_ip" ] && sleep 10; done; echo "End point ready-" && echo $external_ip; export endpoint=$external_ip'
+          externalip=$(kubectl get services/frontend-pod-loadbalancer -o json | jq '.status.loadBalancer.ingress[0].ip' | tr -d '"')
+          npm run bvt -- --url=http://$externalip:3000
 - stage: BUILD_PIPELINE_BACKEND
-  displayName: BUILD PIPELINE BACKEND
+  displayName: BUILD_PIPELINE BACKEND 
   dependsOn: []
   jobs:
     - job: PREBUILD_QA
-      displayName: DEVELOPER QUALITY GATE
+      displayName: STATIC CODE ANALYSIS, UNITTEST & CODE COVERAGE
       pool:
         vmImage: 'ubuntu-latest'
       variables:
@@ -179,6 +199,10 @@ stages:
             codeCoverageTool: JaCoCo
             summaryFileLocation: 'build/reports/jacoco/codeCoverageReport/codeCoverageReport.xml'
             reportDirectory: 'build/reports/jacoco/codeCoverageReport/html'
+- stage: BUILD_AND_PUSH_BACKEND
+  displayName: BUILD AND PUSH TO ACR
+  dependsOn: BUILD_PIPELINE_BACKEND
+  jobs:            
     - job: BUILD
       displayName: BUILD AND PUSH TO ACR
       pool:
@@ -212,8 +236,24 @@ stages:
             docker tag ctsshop/payment-service-1.0.jar:v1.0 $(acrRegistry)/ctsshop/payment-service-1.0.jar:v1.0
             docker push $(acrRegistry)/ctsshop/payment-service-1.0.jar:v1.0
           displayName: 'Push PAYMENT-SERVICE Docker Image to ACR'
-      dependsOn: PREBUILD_QA
-      condition: succeeded()        
+        - script: |
+            #rev=`echo $(Build.BuildNumber) | cut -d "." -f 2`
+            body="[{\"op\":\"test\",\"path\":\"\/rev\",\"value\":1},{\"op\":\"add\",\"path\":\"\/fields\/System.State\",\"value\":\"Done\"}]"
+            IFS=',' read -ra devIDs <<< "$(devIDs)"
+            for devID in "${devIDs[@]}"; do
+              if [[ $(az rest --method get --headers Authorization="Basic "$(b64pat) --url https://dev.azure.com/$(organization)/$(project)/_apis/wit/workitems/$devID?api-version=6.0 | jq '.fields."System.State"' | tr -d '"') = "To Do" ]];then
+                url="https://dev.azure.com/$(organization)/$(project)/_apis/wit/workitems/$devID?api-version=6.0"
+                az rest --method patch --headers Authorization="Basic "$(b64pat) Content-Type=application/json-patch+json --url $url --body $body
+              fi  
+            done
+            IFS=',' read -ra devOpsIDs <<< "$(devOpsIDs)"
+            for devOpsID in "${devOpsIDs[@]}"; do
+              if [[ $(az rest --method get --headers Authorization="Basic "$(b64pat) --url https://dev.azure.com/$(organization)/$(project)/_apis/wit/workitems/$devOpsID?api-version=6.0 | jq '.fields."System.State"' | tr -d '"') = "To Do" ]];then
+                url="https://dev.azure.com/$(organization)/$(project)/_apis/wit/workitems/$devOpsID?api-version=6.0"
+                az rest --method patch --headers Authorization="Basic "$(b64pat) Content-Type=application/json-patch+json --url $url --body $body
+              fi  
+            done
+          displayName: 'Update WorkItems'       
 - stage: FUNCTIONAL_ASSURANCE_BUILD
   displayName: FUNCTIONAL TEST BUILD AND PUSH IMAGE
   dependsOn: []
@@ -245,3 +285,17 @@ stages:
            PathtoPublish: '$(Build.ArtifactStagingDirectory)'
            ArtifactName: 'drop'
            publishLocation: 'Container'
+
+       - task: CmdLine@2
+         displayName: 'Update WorkItems'
+         inputs:
+            script: |
+              rev=`echo $(Build.BuildNumber) | cut -d "." -f 2`
+              body="[{\"op\":\"test\",\"path\":\"\/rev\",\"value\":1},{\"op\":\"add\",\"path\":\"\/fields\/System.State\",\"value\":\"Done\"}]"
+              IFS=',' read -ra funcQAIDs <<< "$(funcQAIDs)"
+              for funcQAID in "${funcQAIDs[@]}"; do
+                if [[ $(az rest --method get --headers Authorization="Basic "$(b64pat) --url https://dev.azure.com/$(organization)/$(project)/_apis/wit/workitems/$funcQAID?api-version=6.0 | jq '.fields."System.State"' | tr -d '"') = "To Do" ]];then
+                  url="https://dev.azure.com/$(organization)/$(project)/_apis/wit/workitems/$funcQAID?api-version=6.0"
+                  az rest --method patch --headers Authorization="Basic "$(b64pat) Content-Type=application/json-patch+json --url $url --body $body
+                fi  
+              done    
