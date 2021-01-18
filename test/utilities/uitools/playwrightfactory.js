@@ -18,9 +18,11 @@ export async function getPuppeteerObject(locator, testParameter){
     let byLocator; 
     switch(locator[0].type) {
         case "css":
+            await testParameter.driver.waitForSelector('css='+locator[0].value, { state: 'attached' });
             byLocator =await testParameter.driver.$('css='+locator[0].value);
           break;
         case "xpath":
+            await testParameter.driver.waitForSelector('xpath='+locator[0].value, { state: 'attached' });
             byLocator =await testParameter.driver.$('xpath='+locator[0].value);
           break;
           case "id":
