@@ -9,7 +9,7 @@ export async function initiatWebDriver(browser) {
    // let executable = process.env.CHROME_PATH;
     //,executablePath: executable
     let browserdriver = await playwright[browser].launch({headless: headlessFalg, args: ['--no-sandbox', '--disable-setuid-sandbox']});
-   
+    
     return browserdriver;
 }
 
@@ -69,6 +69,31 @@ export async function clickOnlyIfElementExist(object, testParameter) {
         
     }
 }
+export async function reloadClick(object, testParameter) {
+    let clickFlag = false;
+    for (let index = 0; index < 3; index++) {
+        try {
+            let locatorPuppeteer = await getPuppeteerObject(object.locator, testParameter);
+            await locatorPuppeteer.click();
+            clickFlag = true;
+        } catch (err) {
+            await testParameter.driver.reload({ waitUntil: ["networkidle0", "domcontentloaded"] });
+            await sleep(3000);
+        }
+        if(clickFlag){
+            break;
+        }
+    }  
+    if(clickFlag){
+        await reportfactory.report(`${object.description} should be clicked`, `${object.description} is clicked`, 'actionPass', testParameter);
+    }else{
+        await reportfactory.report(`${object.description} should be clicked`, `${object.description} is Not clicked, Error: Object Not Loaded even after reload`, 'fail', testParameter);
+        throw new Error(`${object.description} is Not clicked, Error: Object Not Loaded even after reload`);
+    }
+}
+
+
+
 export async function enterText(object, value, testParameter) {
     try {
         let locatorPuppeteer = await getPuppeteerObject(object.locator, testParameter);
@@ -135,4 +160,10 @@ export async function isElementPresent(object, testParameter) {
     } catch (err) {
         return false;
     }
+}
+
+export async function sleep(time) {
+    return new Promise((resolve) => {
+        setTimeout(resolve, time || 1000);
+    });
 }
