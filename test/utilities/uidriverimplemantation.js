@@ -24,6 +24,10 @@ export async function click(object, testParameter) {
 export async function clickOnlyIfElementExist(object, testParameter) {
     await driverFactory.clickOnlyIfElementExist(object, testParameter);
 }
+
+export async function pageReload(testParameter) {
+    await driverFactory.pageReload(testParameter);
+}
 export async function reloadClick(object, testParameter) {
     await driverFactory.reloadClick(object, testParameter);
 }

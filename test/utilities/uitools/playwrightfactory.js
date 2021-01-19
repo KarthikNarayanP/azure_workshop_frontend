@@ -69,6 +69,15 @@ export async function clickOnlyIfElementExist(object, testParameter) {
         
     }
 }
+
+export async function pageReload(testParameter) {
+    for (let index = 0; index < 5; index++) {
+        await testParameter.driver.reload({ waitUntil:'domcontentloaded' });
+    }
+        
+}
+
+
 export async function reloadClick(object, testParameter) {
     let clickFlag = false;
     for (let index = 0; index < 3; index++) {
