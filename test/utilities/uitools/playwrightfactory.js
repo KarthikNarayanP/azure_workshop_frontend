@@ -4,13 +4,14 @@ import * as reportfactory from '../reportfactory'
 //require('jest-extended');
 
 export async function initiatWebDriver(browser) {
+    //let pathFP = `${process.env.reportpath}/videos/`;
   // let browser = await puppeteer.launch({headless: headlessFalg});
-    let headlessFalg = true;
+    let headlessFalg = false;
    // let executable = process.env.CHROME_PATH;
     //,executablePath: executable
     let browserdriver = await playwright[browser].launch({headless: headlessFalg, args: ['--no-sandbox', '--disable-setuid-sandbox']});
-    
-    return browserdriver;
+    let context = await browserdriver.newContext({ recordVideo: { dir: `${process.env.reportpath}/videos/` }});
+    return await context;
 }
 
 
@@ -72,7 +73,7 @@ export async function clickOnlyIfElementExist(object, testParameter) {
 
 export async function pageReload(testParameter) {
     for (let index = 0; index < 5; index++) {
-        await testParameter.driver.reload({ waitUntil:'domcontentloaded' });
+        await testParameter.driver.reload();
     }
         
 }
@@ -86,7 +87,7 @@ export async function reloadClick(object, testParameter) {
             await locatorPuppeteer.click();
             clickFlag = true;
         } catch (err) {
-            await testParameter.driver.reload({ waitUntil: ["networkidle0", "domcontentloaded"] });
+            await testParameter.driver.reload();
             await sleep(3000);
         }
         if(clickFlag){
