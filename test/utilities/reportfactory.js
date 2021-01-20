@@ -1,13 +1,16 @@
 const app = require('../applicationconfiguration.json');
+import * as uifactory from '../utilities/uidriverimplemantation'
 
 export async function createBaseReportHTML(testName, driver, testdescription) {
   const currentdate = new Date();
+  let videoPath = await uifactory.getVideoPath(driver);
 let browserused = process.env.browser;
   let testParameter={
     "testCaseName": testName,
     "driver":driver,
     "reportName":"",
-    "jsonReport":""
+    "jsonReport":"",
+    "videoPath":videoPath
   }
   let testcaseDetails = {
     "testCaseName": testName,
@@ -169,6 +172,7 @@ export async function updateTestSummary(testParameter) {
   let strFailureReason = testconsolidatedreport.failureReason;
   let strDescription = testconsolidatedreport.testdescription;
   let strBrowser= testconsolidatedreport.browser;
+  let strVideoPath = 'videos/'+testParameter.videoPath;
   const currentdateEndTime = new Date();
  let strStatus;
   if(strFailed===0){
@@ -177,7 +181,7 @@ export async function updateTestSummary(testParameter) {
     strStatus ='fail';
  }
   let methodNameCodeBlock;
-  methodNameCodeBlock = `<tr> <td><a href = '${strTestCaseName}_${strBrowser}.html' > <small> ${testconsolidatedreport.testCaseName}_${strBrowser} </small> </a> </td> <td> <small> ${strDescription} </small> </td> <td class= "${strStatus}">${strStatus.charAt(0).toUpperCase()}${strStatus.substring(1)} </td> <td name= 'testEndTime' id = '${currentdateEndTime}' > <small> ${strTime} </small> </td> <td> <small> <b> ${strPassed} </b> </small> </td> <td> <small> <b> ${strFailed} </b> </small> </td> <td> ${strFailureReason} </td> </tr> <!--update-->`;
+  methodNameCodeBlock = `<tr> <td><a href = '${strTestCaseName}_${strBrowser}.html' > <small> ${testconsolidatedreport.testCaseName}_${strBrowser} </small> </a> </td> <td> <small> ${strDescription} </small> </td> <td class= "${strStatus}">${strStatus.charAt(0).toUpperCase()}${strStatus.substring(1)} </td> <td name= 'testEndTime' id = '${currentdateEndTime}' > <small> ${strTime} </small> </td> <td> <small> <b> ${strPassed} </b> </small> </td> <td> <small> <b> ${strFailed} </b> </small> </td><td><a href = '${strVideoPath}' > <small> video </small> </a> </td>  <td> ${strFailureReason} </td> </tr> <!--update-->`;
   const fs = require('fs');
   const dirRS = process.env.reportpath;
   const replace = require('replace-in-file');

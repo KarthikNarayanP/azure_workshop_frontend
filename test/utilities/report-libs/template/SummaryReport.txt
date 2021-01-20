@@ -307,7 +307,8 @@
                         <th style="width:10%">Timing</th>
                         <th style="width:5%">Passed</th>
                         <th style="width:5%">Failed</th>
-                        <th style="width:25%">Failure Reason</th>
+                        <th style="width:5%">Video</th>
+                        <th style="width:20%">Failure Reason</th>
                       </tr>
                     </thead>
                     <tbody id="myTableTestCases">

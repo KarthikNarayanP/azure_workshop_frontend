@@ -17,7 +17,9 @@ export async function launchUrl(testParameter, url) {
     await driverFactory.launchUrl(testParameter, url);
 }
 
-
+export async function getVideoPath(driver) {
+   return await driverFactory.getVideoPath(driver);
+}
 export async function click(object, testParameter) {
     await driverFactory.click(object, testParameter);
 }

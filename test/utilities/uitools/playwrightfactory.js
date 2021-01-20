@@ -6,7 +6,7 @@ import * as reportfactory from '../reportfactory'
 export async function initiatWebDriver(browser) {
     //let pathFP = `${process.env.reportpath}/videos/`;
   // let browser = await puppeteer.launch({headless: headlessFalg});
-    let headlessFalg = false;
+    let headlessFalg = true;
    // let executable = process.env.CHROME_PATH;
     //,executablePath: executable
     let browserdriver = await playwright[browser].launch({headless: headlessFalg, args: ['--no-sandbox', '--disable-setuid-sandbox']});
@@ -46,6 +46,11 @@ export async function getDriver(driver) {
     let page = await driver.newPage()
     await page.setDefaultNavigationTimeout(45000);
     return page;
+}
+export async function getVideoPath(driver) {
+    let path = await driver.video().path();
+    let videoName = path.split("/")[path.split("/").length - 1]
+    return videoName;
 }
 export async function click(object, testParameter) {
     try {
@@ -107,7 +112,7 @@ export async function reloadClick(object, testParameter) {
 export async function enterText(object, value, testParameter) {
     try {
         let locatorPuppeteer = await getPuppeteerObject(object.locator, testParameter);
-        await locatorPuppeteer.type(value);
+        await locatorPuppeteer.fill(value);
         await reportfactory.report(`${object.description} should be entered with value ${value}`, `${object.description} is entered with value ${value}`, 'actionPass', testParameter);
     } catch (err) {
         await reportfactory.report(`${object.description} should be entered with value ${value}`, `${object.description} is not entered with value ${value} , Error:`+err, 'fail', testParameter);
