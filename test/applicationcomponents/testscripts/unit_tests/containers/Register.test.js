@@ -3,7 +3,6 @@ import { createShallow } from '@material-ui/core/test-utils';
 import Register from '../../../../../src/containers/register/Register';
 import Request from '../../../../../src/shared/Request';
 import { createMemoryHistory } from 'history';
-import * as reportfactory from '../../../../utilities/reportfactory'
 
 //jest.mock('Request');
 describe('Register test', () => {

@@ -1,7 +1,6 @@
 import React from 'react';
 import { createShallow } from '@material-ui/core/test-utils';
 import ProductWidget from '../../../../../src/containers/productswidget/ProductWidget';
-import * as reportfactory from '../../../../utilities/reportfactory'
 
 describe('ProductWidget test', () => {
     it("Container - ProductWidget should match snapshot", () => {
