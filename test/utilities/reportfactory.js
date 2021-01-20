@@ -17,7 +17,7 @@ let browserused = process.env.browser;
     "testCaseName": testName,
     "testdescription": testdescription,
     "browser":browserused,
-    "platform":"Windows",
+    "platform":"Ubuntu",
     "startTime": currentdate,
     "reportName":"",
     "stepNumber":0,
@@ -39,7 +39,7 @@ let browserused = process.env.browser;
   result = result.replace('#{ReportTitle}', testCaseName);
   result = result.replace('#{Time}', testcaseDetails.startTime);
   result = result.replace('#{Browser}', browserName);
-  result = result.replace('#{ExecutionMode}', 'Local');
+  result = result.replace('#{ExecutionMode}', 'Azure Devops');
   result = result.replace('#{Platform}', testcaseDetails.platform);
   fs.writeFileSync(`${dirRS}//${testCaseName.replace(/ /g,'_')}.html`, result, 'utf8', () => {
   });

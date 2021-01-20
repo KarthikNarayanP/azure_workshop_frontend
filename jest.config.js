@@ -58,9 +58,9 @@ async function createBaseSummaryReportHTML() {
   const fsw = require('fs');
   const rawdataNew = fsw.readFileSync('./test/utilities/report-libs/template/SummaryReport.txt');
   let resultBS = rawdataNew.toString();
-   resultBS = resultBS.replace('#{Environment}', app.site_url);
+   resultBS = resultBS.replace('#{Environment}', process.env.url);
   resultBS = resultBS.replace('#{StartTime}', currentdate);
-  resultBS = resultBS.replace('#{Concurrency}', 5);
+  resultBS = resultBS.replace('#{Concurrency}', 3);
   fsw.writeFileSync(`${dirRS}//Summary.html`, resultBS, 'utf8', () => {
   });
   await waitforfile(`${dirRS}//Summary.html`);
