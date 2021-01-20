@@ -4,6 +4,7 @@ import * as uifactory from '../utilities/uidriverimplemantation'
 export async function createBaseReportHTML(testName, driver, testdescription) {
   const currentdate = new Date();
   let videoPath = await uifactory.getVideoPath(driver);
+  console.log('Video Path: '+videoPath);
 let browserused = process.env.browser;
   let testParameter={
     "testCaseName": testName,
@@ -172,7 +173,7 @@ export async function updateTestSummary(testParameter) {
   let strFailureReason = testconsolidatedreport.failureReason;
   let strDescription = testconsolidatedreport.testdescription;
   let strBrowser= testconsolidatedreport.browser;
-  let strVideoPath = 'videos/'+testParameter.videoPath;
+  let strVideoPath = 'videos'+testParameter.videoPath;
   const currentdateEndTime = new Date();
  let strStatus;
   if(strFailed===0){

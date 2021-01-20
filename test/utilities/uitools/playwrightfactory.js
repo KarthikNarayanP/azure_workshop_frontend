@@ -49,7 +49,7 @@ export async function getDriver(driver) {
 }
 export async function getVideoPath(driver) {
     let path = await driver.video().path();
-    let videoName = path.split("/")[path.split("/").length - 1]
+    let videoName = path.split("videos")[path.split("videos").length - 1]
     return videoName;
 }
 export async function click(object, testParameter) {
