@@ -84,7 +84,7 @@ stages:
           docker build -t digitalshopify:latest .
         displayName: 'Build Docker Image'
       - script: |
-          docker login $(acrRegistry) --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken)
+          docker login $(acrRegistry) --username acrTokenWshp --password $(azureACRToken)
           docker tag digitalshopify $(acrRegistry)/digitalshopify
           docker push $(acrRegistry)/digitalshopify
         displayName: 'Push Docker Image to ACR'
@@ -110,7 +110,7 @@ stages:
         inputs:
           targetType: 'inline'
           script: |
-            ( kubectl create secret docker-registry mykubetokenacr --docker-server=$(acrRegistry) --docker-username=00000000-0000-0000-0000-000000000000 --docker-password=$(azureACRToken) ) 2>/dev/null || true
+            ( kubectl create secret docker-registry mykubetokenacr --docker-server=$(acrRegistry) --docker-username=acrTokenWshp --docker-password=$(azureACRToken) ) 2>/dev/null || true
             ( kubectl delete service/frontend service/frontend-pod-loadbalancer service/backend-pod-loadbalancer ) 2>/dev/null || true
             ( kubectl delete pod/backend pod/frontend ) 2>/dev/null || true
             kubectl run backend --image=$(acrRegistry)/digitalshopify --overrides='{ "apiVersion": "v1", "spec": { "imagePullSecrets": [{"name": "mykubetokenacr"}] } }' --port=8180
@@ -216,7 +216,7 @@ stages:
             docker-compose build
           displayName: 'Build Docker Image'
         - script: |
-            docker login $(acrRegistry) --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken)
+            docker login $(acrRegistry) --username acrTokenWshp --password $(azureACRToken)
             docker tag ctsshop/service-registry-1.0.jar:v1.0 $(acrRegistry)/ctsshop/service-registry-1.0.jar:v1.0
             docker push $(acrRegistry)/ctsshop/service-registry-1.0.jar:v1.0
           displayName: 'Push SERVICE-REGISTRY Docker Image to ACR'
@@ -271,7 +271,7 @@ stages:
          inputs:
             script: |
               docker build -t testdigitalshopify:latest .
-              docker login $(acrRegistry) --username 00000000-0000-0000-0000-000000000000 --password $(azureACRToken)
+              docker login $(acrRegistry) --username acrTokenWshp --password $(azureACRToken)
               docker tag testdigitalshopify $(acrRegistry)/testdigitalshopify
               docker push $(acrRegistry)/testdigitalshopify
            
