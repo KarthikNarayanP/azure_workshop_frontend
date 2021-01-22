@@ -4,14 +4,17 @@ resources:
    endpoint: AZUREMYSERVICECONNECTION
    type: git
    name: azure_workshop_frontend
+   trigger: none
  - repository: BackendRepo
    endpoint: AZUREMYSERVICECONNECTION
    type: git
    name: azure_workshop_backend
+   trigger: none
  - repository: FunctionalRepo
    endpoint: AZUREMYSERVICECONNECTION
    type: git
    name: azure_workshop_functional_assurance
+   trigger: none
 stages:
 - stage: BUILD_PIPELINE_FRONTEND
   displayName: BUILD PIPELINE FRONTEND
