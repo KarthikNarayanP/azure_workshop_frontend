@@ -1,6 +1,10 @@
-Build Status :
+Components|Status
+----|----
+Execution|[![Build Status](https://dev.azure.com/MYAzureWorkshopExecution/AZURE_WORKSHOP_PROJECT/_apis/build/status/PREBUILD-QA?repoName=azure_workshop_frontend&branchName=master)](https://dev.azure.com/MYAzureWorkshopExecution/AZURE_WORKSHOP_PROJECT/_build/latest?definitionId=1&repoName=azure_workshop_frontend&branchName=master)
+Code Coverage|![Code Coverage](https://img.shields.io/badge/code%20coverage-63.70%20%25-yellowgreen)
+Code Smells|![Code Smells](https://img.shields.io/badge/code%20smells-7-brightgreen)
+Vulnerabilities|![Vulnerabilities](https://img.shields.io/badge/vulnerabilities-0-brightgreen)
 
-[![Build Status](https://dev.azure.com/MYAzureWorkshopExecution/AZURE_WORKSHOP_PROJECT/_apis/build/status/PREBUILD-QA?repoName=azure_workshop_frontend&branchName=master)](https://dev.azure.com/MYAzureWorkshopExecution/AZURE_WORKSHOP_PROJECT/_build/latest?definitionId=1&repoName=azure_workshop_frontend&branchName=master)
 
 ## Application Overview:CTS-SHOP
     # This is a Sample ECOMMERCE Resonsive Web Designed Application built using React, in which we can perform Basic Ecommerce Functionalities like 
