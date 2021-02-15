@@ -24,13 +24,14 @@ Vulnerabilities|![Vulnerabilities](https://img.shields.io/badge/vulnerabilities-
     # Considering the fact of API Unavailablity - suppose if Microservices is not available - Mock services developed using Express JS can be leverage to Render the UI application for test. All the micro services are mocked and available within the UI Framework for consumption.
 
 ## User Login Data for Actual Backend Services
-##        Email	                         Password
-sridhar.bandi@cts-shop.com	             password-1
-karthik@cts-shop.com	                 password-1
-demo@mm-shop.com	                     password-1
-john.doe@mm-shop.com	                 password-1
-james.bond@mm-shop.com	                 password-1
-johnni.johnson@mm-shop.com	             password-1
+Email | Password
+----|----
+sridhar.bandi@cts-shop.com|password-1
+karthik@cts-shop.com|password-1
+demo@mm-shop.com|password-1
+john.doe@mm-shop.com|password-1
+james.bond@mm-shop.com|password-1
+johnni.johnson@mm-shop.com|password-1
 
 
 ## Technology Stack:-
