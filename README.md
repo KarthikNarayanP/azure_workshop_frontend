@@ -58,7 +58,7 @@ johnni.johnson@mm-shop.com|password-1
 
     ## Run the follwing command to create the docker file:
 
-    - docker build ./ -t awswrkshpaut:frontend -t awswrkshpaut:latest -t awswrkshpaut:1.0
+    - docker build ./ -t azurewrkshp-aut:frontend -t azurewrkshp-aut:latest -t azurewrkshp-aut:1.0
 
     ## Run the following command to run the docker file:
     - 
@@ -69,4 +69,4 @@ johnni.johnson@mm-shop.com|password-1
         -v /app/node_modules \
         -p 3001:3000 \
         -e CHOKIDAR_USEPOLLING=true \
-        awswrkshpaut:frontend
+        azurewrkshp-aut:frontend
