@@ -42,27 +42,27 @@ johnni.johnson@mm-shop.com|password-1
     -Back End: Micro services using Spring Boot <Available at Repo :- >
     -DataBase: SQL Server
 
-## Basic commands to start up with CTS-SHOP Front End
-    ## Before starting
-    - Install Node.js
-    ## To Install Packages
-    - npm install 
-    ## To Start UI
-    - npm start 
-    ## To Execute Mock Services (If Microservices are Not Aavailable we can use this)
-    - npm run mock
-    ## To Execute Unit Test.
-    - npm test
+## Basic commands to start up with DigitalShopify Front End
+    - Before starting
+        - Install Node.js
+    - To Install Packages
+        - npm install 
+    - To Start UI
+        - npm start 
+    - To Execute Mock Services (If Microservices are Not Aavailable we can use this)
+        - npm run mock
+    - To Execute Unit Test.
+        - npm test
 
 
-# Docker related
+# Docker execution
 
-    ## Run the following command to create the docker file:
+    - Run the following command to create the docker file:
 
-    - docker build ./ -t azurewrkshp-aut:frontend -t azurewrkshp-aut:latest -t azurewrkshp-aut:1.0
+          - docker build ./ -t azurewrkshp-aut:frontend -t azurewrkshp-aut:latest -t azurewrkshp-aut:1.0
 
-    ## Run the following command to run the docker file:
-    - 
+    - Run the following command to run the docker file:
+     
         docker run \
         -it \
         --rm \
