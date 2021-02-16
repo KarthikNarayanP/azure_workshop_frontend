@@ -6,8 +6,9 @@ Code Smells|![Code Smells](https://img.shields.io/badge/code%20smells-7-brightgr
 Vulnerabilities|![Vulnerabilities](https://img.shields.io/badge/vulnerabilities-0-brightgreen)
 
 
-## Application Overview:CTS-SHOP
-    # This is a Sample ECOMMERCE Resonsive Web Designed Application built using React, in which we can perform Basic Ecommerce Functionalities like 
+## Application Overview: DigitalShopify Application
+
+     This is a Sample ECOMMERCE Resonsive Web Designed Application built using React, in which we can perform Basic Ecommerce Functionalities like 
                 - Registration
                 - Login
                 - Searching a Product
@@ -15,13 +16,13 @@ Vulnerabilities|![Vulnerabilities](https://img.shields.io/badge/vulnerabilities-
                 - Enter Delivery Details
                 - Checkout
                 - Payment
-    # UI Will be rendered based on the responses from Microservices. 3 Microservices are available
+     UI Will be rendered based on the responses from Microservices. 3 Microservices are available
                 - Catalogues and Products <Helps with Product searches>
                 - Customer - Registration and Login
                 - Image Services
-    # Data will be rendered from SQL Server database.
-    # Payment will be processsed though Mockservies for Payment.
-    # Considering the fact of API Unavailablity - suppose if Microservices is not available - Mock services developed using Express JS can be leverage to Render the UI application for test. All the micro services are mocked and available within the UI Framework for consumption.
+     Data will be rendered from SQL Server database.
+     Payment will be processsed though Mockservies for Payment.
+     Considering the fact of API Unavailablity - suppose if Microservices is not available - Mock services developed using Express JS can be leverage to Render the UI application for test. All the micro services are mocked and available within the UI Framework for consumption.
 
 ## User Login Data for Actual Backend Services
 Email | Password
@@ -56,7 +57,7 @@ johnni.johnson@mm-shop.com|password-1
 
 # Docker related
 
-    ## Run the follwing command to create the docker file:
+    ## Run the following command to create the docker file:
 
     - docker build ./ -t azurewrkshp-aut:frontend -t azurewrkshp-aut:latest -t azurewrkshp-aut:1.0
 
