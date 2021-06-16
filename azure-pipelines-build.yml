@@ -15,7 +15,7 @@ stages:
   - job: PREBUILD_QA
     displayName: STATIC CODE ANALYSIS, UNITTEST & CODE COVERAGE
     continueOnError: false
-    pool: 'SelfhostedAgentPool'
+    pool: '$(agentpoolname)'
     variables:
         privateIP: $(publicIP)
         region: $(regionprimary)
@@ -69,7 +69,7 @@ stages:
   jobs:
   - job: BUILD_PUSH
     displayName: BUILD AND PUSH TO ACR
-    pool: 'SelfhostedAgentPool'
+    pool: '$(agentpoolname)'
     steps:
       - checkout: FrontendRepo
       - script: |
@@ -87,7 +87,7 @@ stages:
   jobs:
    - job: DEPLOY_WITH_VIRTUAL_SERVICES_TO_AKS
      displayName: DEPLOY WITH VIRTUAL SERVICES TO AKS
-     pool: 'SelfhostedAgentPool'
+     pool: '$(agentpoolname)'
      steps:
       - checkout: none
       - task: Kubernetes@1
@@ -121,7 +121,7 @@ stages:
   jobs:
   - job: BVT_SYSTEM_TESTS
     displayName: BVT - UI TESTS
-    pool: 'SelfhostedAgentPool'
+    pool: '$(agentpoolname)'
     steps:
     - bash: |
         echo "Environmental Valued"
@@ -159,7 +159,7 @@ stages:
   jobs:
     - job: PREBUILD_QA
       displayName: STATIC CODE ANALYSIS, UNITTEST & CODE COVERAGE
-      pool: 'SelfhostedAgentPool'
+      pool: '$(agentpoolname)'
       variables:
         backendIP: $(publicIP)
       steps:
@@ -197,7 +197,7 @@ stages:
   jobs:
     - job: BUILD
       displayName: BUILD AND PUSH TO ACR
-      pool: 'SelfhostedAgentPool'
+      pool: '$(agentpoolname)'
       steps:
         - checkout: BackendRepo
         - script: |
