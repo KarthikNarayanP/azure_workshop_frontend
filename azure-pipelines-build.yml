@@ -73,12 +73,12 @@ stages:
     steps:
       - checkout: FrontendRepo
       - script: |
-          docker build -t digitalshopify:latest .
+          sudo docker build -t digitalshopify:latest .
         displayName: 'Build Docker Image'
       - script: |
-          docker login $(acrRegistry) --username acrTokenWshp --password $(azureACRToken)
-          docker tag digitalshopify $(acrRegistry)/digitalshopify
-          docker push $(acrRegistry)/digitalshopify
+          sudo docker login $(acrRegistry) --username acrTokenWshp --password $(azureACRToken)
+          sudo docker tag digitalshopify $(acrRegistry)/digitalshopify
+          sudo docker push $(acrRegistry)/digitalshopify
         displayName: 'Push Docker Image to ACR'
 
 - stage: DEPLOY_WITH_VIRTUAL_SERVICES_TO_AKS
@@ -204,28 +204,28 @@ stages:
             export INSTRUMENTATION_KEY=$(INSTRUMENTATION_KEY)
             chmod +x ./gradlew
             ./gradlew clean build
-            docker-compose build
+            sudo docker-compose build
           displayName: 'Build Docker Image'
         - script: |
-            docker login $(acrRegistry) --username acrTokenWshp --password $(azureACRToken)
-            docker tag ctsshop/service-registry-1.0.jar:v1.0 $(acrRegistry)/ctsshop/service-registry-1.0.jar:v1.0
-            docker push $(acrRegistry)/ctsshop/service-registry-1.0.jar:v1.0
+            sudo docker login $(acrRegistry) --username acrTokenWshp --password $(azureACRToken)
+            sudo docker tag ctsshop/service-registry-1.0.jar:v1.0 $(acrRegistry)/ctsshop/service-registry-1.0.jar:v1.0
+            sudo docker push $(acrRegistry)/ctsshop/service-registry-1.0.jar:v1.0
           displayName: 'Push SERVICE-REGISTRY Docker Image to ACR'
         - script: |
-            docker tag ctsshop/catalogue-service-1.0.jar:v1.0 $(acrRegistry)/ctsshop/catalogue-service-1.0.jar:v1.0
-            docker push $(acrRegistry)/ctsshop/catalogue-service-1.0.jar:v1.0
+            sudo docker tag ctsshop/catalogue-service-1.0.jar:v1.0 $(acrRegistry)/ctsshop/catalogue-service-1.0.jar:v1.0
+            sudo docker push $(acrRegistry)/ctsshop/catalogue-service-1.0.jar:v1.0
           displayName: 'Push CATALOGUE-SERVICE Docker Image to ACR'
         - script: |
-            docker tag ctsshop/customer-service-1.0.jar:v1.0 $(acrRegistry)/ctsshop/customer-service-1.0.jar:v1.0
-            docker push $(acrRegistry)/ctsshop/customer-service-1.0.jar:v1.0
+            sudo docker tag ctsshop/customer-service-1.0.jar:v1.0 $(acrRegistry)/ctsshop/customer-service-1.0.jar:v1.0
+            sudo docker push $(acrRegistry)/ctsshop/customer-service-1.0.jar:v1.0
           displayName: 'Push CUSTOMER-SERVICE Docker Image to ACR'
         - script: |
-            docker tag ctsshop/image-service-1.0.jar:v1.0 $(acrRegistry)/ctsshop/image-service-1.0.jar:v1.0
-            docker push $(acrRegistry)/ctsshop/image-service-1.0.jar:v1.0
+            sudo docker tag ctsshop/image-service-1.0.jar:v1.0 $(acrRegistry)/ctsshop/image-service-1.0.jar:v1.0
+            sudo docker push $(acrRegistry)/ctsshop/image-service-1.0.jar:v1.0
           displayName: 'Push IMAGE-SERVICE Docker Image to ACR'
         - script: |
-            docker tag ctsshop/payment-service-1.0.jar:v1.0 $(acrRegistry)/ctsshop/payment-service-1.0.jar:v1.0
-            docker push $(acrRegistry)/ctsshop/payment-service-1.0.jar:v1.0
+            sudo docker tag ctsshop/payment-service-1.0.jar:v1.0 $(acrRegistry)/ctsshop/payment-service-1.0.jar:v1.0
+            sudo docker push $(acrRegistry)/ctsshop/payment-service-1.0.jar:v1.0
           displayName: 'Push PAYMENT-SERVICE Docker Image to ACR'
         - script: |
             #rev=`echo $(Build.BuildNumber) | cut -d "." -f 2`
