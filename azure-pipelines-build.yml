@@ -26,6 +26,7 @@ stages:
     steps:
       - checkout: FrontendRepo
         persistCredentials: true
+        clean: false
       - bash: |
           echo "Environmental Valued"
       - task: NodeTool@0
@@ -72,6 +73,8 @@ stages:
     pool: '$(agentpoolname)'
     steps:
       - checkout: FrontendRepo
+        persistCredentials: true
+        clean: false
       - script: |
           sudo docker build -t digitalshopify:latest .
         displayName: 'Build Docker Image'
@@ -169,6 +172,7 @@ stages:
       steps:
       - checkout: BackendRepo
         persistCredentials: true
+        clean: false
       - script: |
           export backendIP=$(sonarIP)
           export INSTRUMENTATION_KEY=$(INSTRUMENTATION_KEY)
@@ -204,6 +208,8 @@ stages:
       pool: '$(agentpoolname)'
       steps:
         - checkout: BackendRepo
+          persistCredentials: true
+          clean: false
         - script: |
             export INSTRUMENTATION_KEY=$(INSTRUMENTATION_KEY)
             chmod +x ./gradlew
