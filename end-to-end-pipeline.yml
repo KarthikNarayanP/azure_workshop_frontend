@@ -85,6 +85,10 @@ stages:
           sudo docker build -t digitalshopify:latest .
         displayName: 'Build Docker Image'
       - script: |
+          FILE=/usr/bin/docker-credential-secretservice
+          if [ -f "$FILE" ]; then
+            mv /usr/bin/docker-credential-secretservice /usr/bin/docker-credential-secretservice.broken
+          fi
           sudo docker login $(acrRegistry) --username acrTokenWshp --password $(azureACRToken)
           sudo docker tag digitalshopify $(acrRegistry)/digitalshopify
           sudo docker push $(acrRegistry)/digitalshopify
@@ -217,6 +221,10 @@ stages:
             sudo docker-compose build
           displayName: 'Build Docker Image'
         - script: |
+            FILE=/usr/bin/docker-credential-secretservice
+            if [ -f "$FILE" ]; then
+              mv /usr/bin/docker-credential-secretservice /usr/bin/docker-credential-secretservice.broken
+            fi
             sudo docker login $(acrRegistry) --username acrTokenWshp --password $(azureACRToken)
             sudo docker tag ctsshop/service-registry-1.0.jar:v1.0 $(acrRegistry)/ctsshop/service-registry-1.0.jar:v1.0
             sudo docker push $(acrRegistry)/ctsshop/service-registry-1.0.jar:v1.0
@@ -270,6 +278,10 @@ stages:
          displayName: 'Build and Push Image'
          inputs:
             script: |
+              FILE=/usr/bin/docker-credential-secretservice
+              if [ -f "$FILE" ]; then
+                mv /usr/bin/docker-credential-secretservice /usr/bin/docker-credential-secretservice.broken
+              fi
               sudo docker build -t testdigitalshopify:latest .
               sudo docker login $(acrRegistry) --username acrTokenWshp --password $(azureACRToken)
               sudo docker tag testdigitalshopify $(acrRegistry)/testdigitalshopify
